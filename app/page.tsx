@@ -221,19 +221,35 @@ export default function FireplexityPage() {
       {/* Header with logo - matching other pages */}
       <header className="px-4 sm:px-6 lg:px-8 py-1 mt-2">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link
-            href="https://firecrawl.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image 
-              src="/firecrawl-logo-with-fire.png" 
-              alt="Firecrawl Logo" 
-              width={113} 
-              height={24}
-              className="w-[113px] h-auto"
-            />
-          </Link>
+          <div className="flex items-center space-x-6">
+            <Link
+              href="https://firecrawl.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Image 
+                src="/firecrawl-logo-with-fire.png" 
+                alt="Firecrawl Logo" 
+                width={113} 
+                height={24}
+                className="w-[113px] h-auto"
+              />
+            </Link>
+            <div className="hidden md:flex items-center space-x-4">
+              <Link 
+                href="/" 
+                className="text-green-600 dark:text-green-400 font-medium"
+              >
+                Regular Search
+              </Link>
+              <Link 
+                href="/deep-search" 
+                className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Deep Data Search
+              </Link>
+            </div>
+          </div>
           <Button
             asChild
             variant="code"
@@ -257,8 +273,8 @@ export default function FireplexityPage() {
       <div className={`px-4 sm:px-6 lg:px-8 pt-2 pb-4 transition-all duration-500 ${isChatActive ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-[2.5rem] lg:text-[3.8rem] text-[#36322F] dark:text-white font-semibold tracking-tight leading-[1.1] opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
-            <span className="relative px-1 pb-1 text-transparent bg-clip-text bg-gradient-to-tr from-red-600 to-yellow-500 inline-flex justify-center items-center">
-              Fireplexity
+            <span className="relative px-1 pb-1 text-transparent bg-clip-text bg-gradient-to-tr from-green-700 to-green-400 inline-flex justify-center items-center">
+              LEKplexity
             </span>
             <span className="block leading-[1.1] opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:400ms] [animation-fill-mode:forwards]">
               Search & Scrape
@@ -306,7 +322,7 @@ export default function FireplexityPage() {
               href="https://firecrawl.dev" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-medium"
+              className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium"
             >
               Firecrawl
             </a>
@@ -325,7 +341,7 @@ export default function FireplexityPage() {
                 href="https://www.firecrawl.dev" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-orange-600 hover:text-orange-700 underline"
+                className="text-green-600 hover:text-green-700 underline"
               >
                 firecrawl.dev
               </a>
@@ -344,7 +360,7 @@ export default function FireplexityPage() {
               }}
               className="h-12"
             />
-            <Button onClick={handleApiKeySubmit} variant="orange" className="w-full">
+            <Button onClick={handleApiKeySubmit} variant="green" className="w-full">
               Save API Key
             </Button>
           </div>

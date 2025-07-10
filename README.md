@@ -11,6 +11,7 @@ A blazing-fast AI search engine powered by Firecrawl's web scraping API. Get int
 ## Features
 
 - **Real-time Web Search** - Powered by Firecrawl's search API
+- **Deep Data Search** - Extract specific data from high-quality sources
 - **AI Responses** - Streaming answers with GPT-4o-mini
 - **Source Citations** - Every claim backed by references
 - **Live Stock Data** - Automatic TradingView charts
@@ -34,6 +35,10 @@ Add to `.env.local`:
 ```
 FIRECRAWL_API_KEY=fc-your-api-key
 OPENAI_API_KEY=sk-your-api-key
+
+# Optional: Customize AI behavior
+AI_SYSTEM_PROMPT="Your custom system prompt here"
+AI_FOLLOWUP_SYSTEM_PROMPT="Your custom follow-up prompt here"
 ```
 
 ### Run
@@ -60,6 +65,8 @@ Visit http://localhost:3000
 - [Firecrawl Docs](https://docs.firecrawl.dev)
 - [Get API Key](https://firecrawl.dev)
 - [Discord Community](https://discord.gg/firecrawl)
+- [AI System Prompt Configuration](AI_SYSTEM_PROMPT_SETUP.md)
+- [Deep Data Search Guide](DEEP_SEARCH_GUIDE.md)
 
 ## License
 

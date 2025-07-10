@@ -5,7 +5,7 @@ import { Send, Loader2, User, Sparkles, FileText, Plus, Copy, RefreshCw, Check }
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { SearchResult } from './types'
+import { SearchResult, FollowUpSuggestion } from './types'
 import { type Message } from 'ai'
 import { CharacterCounter } from './character-counter'
 import Image from 'next/image'
@@ -14,7 +14,8 @@ import { StockChart } from './stock-chart'
 
 interface MessageData {
   sources: SearchResult[]
-  followUpQuestions: string[]
+  followUpQuestions?: string[]
+  followUpSuggestions?: FollowUpSuggestion
   ticker?: string
 }
 
@@ -22,6 +23,7 @@ interface ChatInterfaceProps {
   messages: Message[]
   sources: SearchResult[]
   followUpQuestions: string[]
+  followUpSuggestions?: FollowUpSuggestion | null
   searchStatus: string
   isLoading: boolean
   input: string
@@ -29,9 +31,27 @@ interface ChatInterfaceProps {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void
   messageData?: Map<number, MessageData>
   currentTicker?: string | null
+  isDeepSearch?: boolean
+  excludedDomains?: string[]
+  onExcludeDomains?: (domains: string[]) => void
 }
 
-export function ChatInterface({ messages, sources, followUpQuestions, searchStatus, isLoading, input, handleInputChange, handleSubmit, messageData, currentTicker }: ChatInterfaceProps) {
+export function ChatInterface({ 
+  messages, 
+  sources, 
+  followUpQuestions, 
+  followUpSuggestions,
+  searchStatus, 
+  isLoading, 
+  input, 
+  handleInputChange, 
+  handleSubmit, 
+  messageData, 
+  currentTicker,
+  isDeepSearch = false,
+  excludedDomains = [],
+  onExcludeDomains
+}: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
@@ -267,9 +287,9 @@ export function ChatInterface({ messages, sources, followUpQuestions, searchStat
                                     </div>
                                     
                                     {/* Title */}
-                                    <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors leading-tight">
-                                      {result.title}
-                                    </h3>
+                                                          <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
+                        {result.title}
+                      </h3>
                                     
                                     {/* Character count */}
                                     <div className="mt-1">
@@ -478,7 +498,7 @@ export function ChatInterface({ messages, sources, followUpQuestions, searchStat
                       </div>
                       
                       {/* Title */}
-                      <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors leading-tight">
+                      <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
                         {result.title}
                       </h3>
                       
@@ -550,7 +570,7 @@ export function ChatInterface({ messages, sources, followUpQuestions, searchStat
           {isLoading && messages[messages.length - 1]?.role === 'user' && (
             <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-fill-mode:forwards]">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-orange-500" />
+                <Sparkles className="h-4 w-4 text-green-500" />
                 <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Answer</h2>
               </div>
               <div>
@@ -582,13 +602,92 @@ export function ChatInterface({ messages, sources, followUpQuestions, searchStat
                     }}
                   >
                     <div className="flex items-center gap-2">
-                      <Plus className="h-4 w-4 text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                      <Plus className="h-4 w-4 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
                         {question}
                       </span>
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Deep Search Follow-up Suggestions */}
+          {isDeepSearch && followUpSuggestions && !isWaitingForResponse && (
+            <div className="opacity-0 animate-fade-up [animation-duration:300ms] [animation-fill-mode:forwards]">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-blue-500" />
+                <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Additional Sources</h2>
+              </div>
+              <div className="space-y-3">
+                {/* Show remaining sources */}
+                {followUpSuggestions.remainingSources.length > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                    <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                      Available High-Quality Sources:
+                    </h3>
+                    <div className="space-y-2">
+                      {followUpSuggestions.remainingSources.map((source, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                              {source.name}
+                            </p>
+                            <p className="text-xs text-blue-600 dark:text-blue-300">
+                              {source.description}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (onExcludeDomains) {
+                                const newExcludedDomains = [...excludedDomains, source.domain]
+                                onExcludeDomains(newExcludedDomains)
+                                // Trigger a new search with the updated excluded domains
+                                setTimeout(() => {
+                                  formRef.current?.requestSubmit()
+                                }, 100)
+                              }
+                            }}
+                            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                          >
+                            Search This Source
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Show AI suggestions */}
+                {followUpSuggestions.suggestion && followUpSuggestions.suggestion.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      AI Suggestions:
+                    </h3>
+                    <div className="space-y-2">
+                      {followUpSuggestions.suggestion.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleFollowUpClick(suggestion)}
+                          className="w-full text-left p-2 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md group opacity-0 animate-fade-up"
+                          style={{
+                            animationDelay: `${index * 50}ms`,
+                            animationDuration: '300ms',
+                            animationFillMode: 'forwards'
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Plus className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                            <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {suggestion}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

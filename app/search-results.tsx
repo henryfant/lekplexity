@@ -89,7 +89,7 @@ export function SearchResults({ results, isLoading }: SearchResultsProps) {
             </div>
 
             {/* Title */}
-            <h3 className="font-semibold text-sm mb-1 line-clamp-2 text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400">
+            <h3 className="font-semibold text-sm mb-1 line-clamp-2 text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400">
               {result.title}
             </h3>
 

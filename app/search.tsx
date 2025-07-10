@@ -20,13 +20,13 @@ export function SearchComponent({ handleSubmit, input, handleInputChange, isLoad
           value={input}
           onChange={handleInputChange}
           placeholder="Ask anything..."
-          className="pr-24 h-14 text-lg rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 transition-colors"
+          className="pr-24 h-14 text-lg rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 transition-colors"
           disabled={isLoading}
         />
         <Button
           type="submit"
           disabled={isLoading || !input.trim()}
-          variant="orange"
+          variant="green"
           className="absolute right-2 rounded-lg"
         >
           {isLoading ? (

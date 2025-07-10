@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, createDataStreamResponse } from 'ai'
 import { detectCompanyTicker } from '@/lib/company-ticker-map'
+import { getSystemPrompt, getFollowUpSystemPrompt } from '@/lib/ai-config'
 
 export async function POST(request: Request) {
   const requestId = Math.random().toString(36).substring(7)
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
     const openai = createOpenAI({
       apiKey: openaiApiKey
     })
+
+    // Get system prompts from configuration
+    const systemPrompt = getSystemPrompt()
+    const followUpSystemPrompt = getFollowUpSystemPrompt()
 
     // Always perform a fresh search for each query to ensure relevant results
     const isFollowUp = messages.length > 2
@@ -145,20 +150,7 @@ export async function POST(request: Request) {
             aiMessages = [
               {
                 role: 'system',
-                content: `You are a friendly assistant that helps users find information.
-                
-                RESPONSE STYLE:
-                - For greetings (hi, hello), respond warmly and ask how you can help
-                - For simple questions, give direct, concise answers
-                - For complex topics, provide detailed explanations only when needed
-                - Match the user's energy level - be brief if they're brief
-                
-                FORMAT:
-                - Use markdown for readability when appropriate
-                - Keep responses natural and conversational
-                - Include citations inline as [1], [2], etc. when referencing specific sources
-                - Citations should correspond to the source order (first source = [1], second = [2], etc.)
-                - Use the format [1] not CITATION_1 or any other format`
+                content: getSystemPrompt(false)
               },
               {
                 role: 'user',
@@ -170,16 +162,7 @@ export async function POST(request: Request) {
             aiMessages = [
               {
                 role: 'system',
-                content: `You are a friendly assistant continuing our conversation.
-                
-                REMEMBER:
-                - Keep the same conversational tone from before
-                - Build on previous context naturally
-                - Match the user's communication style
-                - Use markdown when it helps clarity
-                - Include citations inline as [1], [2], etc. when referencing specific sources
-                - Citations should correspond to the source order (first source = [1], second = [2], etc.)
-                - Use the format [1] not CITATION_1 or any other format`
+                content: getSystemPrompt(true)
               },
               // Include conversation context
               ...messages.slice(0, -1).map((m: { role: string; content: string }) => ({
@@ -204,9 +187,7 @@ export async function POST(request: Request) {
             messages: [
               {
                 role: 'system',
-                content: `Generate 5 natural follow-up questions based on the query and context.\n                \n                ONLY generate questions if the query warrants them:\n                - Skip for simple greetings or basic acknowledgments\n                - Create questions that feel natural, not forced\n                - Make them genuinely helpful, not just filler\n                - Focus on the topic and sources available\n                \n                If the query doesn't need follow-ups, return an empty response.
-                ${isFollowUp ? 'Consider the full conversation history and avoid repeating previous questions.' : ''}
-                Return only the questions, one per line, no numbering or bullets.`
+                content: getFollowUpSystemPrompt(isFollowUp)
               },
               {
                 role: 'user',

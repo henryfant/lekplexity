@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, createDataStreamResponse } from 'ai'
 import { detectCompanyTicker } from '@/lib/company-ticker-map'
-import { selectRelevantContent } from '@/lib/content-selection'
-import { getSystemPrompt, getFollowUpSystemPrompt } from '@/lib/ai-config'
+import { getDeepDataSystemPrompt } from '@/lib/ai-config'
+import { getApprovedSourcesForQuery, getNextBestSources } from '@/lib/approved-sources'
+import { performDeepSearch, DeepSearchOptions } from '@/lib/deep-search'
 import FirecrawlApp from '@mendable/firecrawl-js'
 
 export async function POST(request: Request) {
   const requestId = Math.random().toString(36).substring(7)
-  console.log(`[${requestId}] Fireplexity Search API called`)
+  console.log(`[${requestId}] Deep Search API called`)
+  
   try {
     const body = await request.json()
     const messages = body.messages || []
@@ -36,59 +38,66 @@ export async function POST(request: Request) {
       apiKey: openaiApiKey
     })
 
-    // Get system prompts from configuration
-    const systemPrompt = getSystemPrompt()
-    const followUpSystemPrompt = getFollowUpSystemPrompt()
-
     // Initialize Firecrawl
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey })
 
-    // Always perform a fresh search for each query to ensure relevant results
-    const isFollowUp = messages.length > 2
+    // Get approved sources for this query
+    const approvedSources = getApprovedSourcesForQuery(query)
+    console.log(`[${requestId}] Selected sources:`, approvedSources.map(s => s.name))
+
+    // Check if this is a follow-up search request
+    const isFollowUpSearch = body.isFollowUpSearch || false
+    const excludedDomains = body.excludedDomains || []
     
+    let sourcesToSearch = approvedSources
+    if (isFollowUpSearch && excludedDomains.length > 0) {
+      sourcesToSearch = getNextBestSources(excludedDomains)
+      console.log(`[${requestId}] Follow-up search with sources:`, sourcesToSearch.map(s => s.name))
+    }
+
     // Use createDataStreamResponse with a custom data stream
     return createDataStreamResponse({
       execute: async (dataStream) => {
         try {
-          let sources: Array<{
-            url: string
-            title: string
-            description?: string
-            content?: string
-            markdown?: string
-            publishedDate?: string
-            author?: string
-            image?: string
-            favicon?: string
-            siteName?: string
-          }> = []
-          let context = ''
-          
-          // Always search for sources to ensure fresh, relevant results
-          dataStream.writeData({ type: 'status', message: 'Starting search...' })
-          dataStream.writeData({ type: 'status', message: 'Searching for relevant sources...' })
-            
-          const searchData = await firecrawl.search(query, {
-            limit: 6,
-            scrapeOptions: {
-              formats: ['markdown'],
-              onlyMainContent: true
-            }
+          // Update status
+          dataStream.writeData({ 
+            type: 'status', 
+            message: `Searching ${sourcesToSearch.length} high-quality sources for specific data...` 
           })
-          
-          // Transform sources metadata
-          sources = searchData.data?.map((item: any) => ({
-            url: item.url,
-            title: item.title || item.url,
-            description: item.description || item.metadata?.description,
-            content: item.content,
-            markdown: item.markdown,
-            publishedDate: item.publishedDate,
-            author: item.author,
-            image: item.metadata?.ogImage || item.metadata?.image,
-            favicon: item.metadata?.favicon,
-            siteName: item.metadata?.siteName,
-          })).filter((item: any) => item.url) || []
+
+          // Configure deep search options
+          const searchOptions: DeepSearchOptions = {
+            maxDepth: 3,
+            includeFiles: true,
+            includeSpreadsheets: true,
+            includeDatabases: true,
+            targetDataPoints: extractTargetDataPoints(query)
+          }
+
+          // Perform deep search on approved sources
+          const deepSearchResults = await performDeepSearch(
+            query,
+            sourcesToSearch,
+            searchOptions,
+            firecrawlApiKey
+          )
+
+          // Transform results for the frontend
+          const sources = deepSearchResults.map((result, index) => ({
+            url: result.url,
+            title: result.title,
+            description: `${result.source.name} - ${result.contentType}`,
+            content: result.content,
+            markdown: result.content,
+            publishedDate: undefined,
+            author: undefined,
+            image: undefined,
+            favicon: undefined,
+            siteName: result.source.name,
+            relevanceScore: result.relevanceScore,
+            contentType: result.contentType,
+            dataPoints: result.dataPoints
+          }))
 
           // Send sources immediately
           dataStream.writeData({ type: 'sources', sources })
@@ -97,7 +106,7 @@ export async function POST(request: Request) {
           await new Promise(resolve => setTimeout(resolve, 300))
           
           // Update status
-          dataStream.writeData({ type: 'status', message: 'Analyzing sources and generating answer...' })
+          dataStream.writeData({ type: 'status', message: 'Analyzing data and generating precise answer...' })
           
           // Detect if query is about a company
           const ticker = detectCompanyTicker(query)
@@ -106,12 +115,12 @@ export async function POST(request: Request) {
             dataStream.writeData({ type: 'ticker', symbol: ticker })
           }
           
-          // Prepare context from sources with intelligent content selection
-          context = sources
-            .map((source: { title: string; markdown?: string; content?: string; url: string }, index: number) => {
-              const content = source.markdown || source.content || ''
-              const relevantContent = selectRelevantContent(content, query, 2000)
-              return `[${index + 1}] ${source.title}\nURL: ${source.url}\n${relevantContent}`
+          // Prepare context from deep search results
+          const context = sources
+            .map((source, index) => {
+              const content = source.content || ''
+              const truncatedContent = content.length > 3000 ? content.slice(0, 3000) + '...' : content
+              return `[${index + 1}] ${source.title}\nSource: ${source.siteName}\nType: ${source.contentType}\nRelevance Score: ${source.relevanceScore}\nData Points: ${source.dataPoints?.join(', ') || 'None'}\nURL: ${source.url}\n${truncatedContent}`
             })
             .join('\n\n---\n\n')
 
@@ -121,53 +130,50 @@ export async function POST(request: Request) {
           // Prepare messages for the AI
           let aiMessages = []
           
-          if (!isFollowUp) {
-            // Initial query with sources
+          if (!isFollowUpSearch) {
+            // Initial query with deep search results
             aiMessages = [
               {
                 role: 'system',
-                content: getSystemPrompt(false)
+                content: getDeepDataSystemPrompt()
               },
               {
                 role: 'user',
-                content: `Answer this query: "${query}"\n\nBased on these sources:\n${context}`
+                content: `Extract the specific data point(s) requested in this query: "${query}"\n\nBased on these deep search results from high-quality sources:\n${context}\n\nIf the specific data is not found in these sources, clearly state this and suggest the next best sources to search.`
               }
             ]
           } else {
-            // Follow-up question - still use fresh sources from the new search
+            // Follow-up search with new sources
             aiMessages = [
               {
                 role: 'system',
-                content: getSystemPrompt(true)
+                content: getDeepDataSystemPrompt()
               },
               // Include conversation context
               ...messages.slice(0, -1).map((m: { role: string; content: string }) => ({
                 role: m.role,
                 content: m.content
               })),
-              // Add the current query with the fresh sources
+              // Add the current query with the new search results
               {
                 role: 'user',
-                content: `Answer this query: "${query}"\n\nBased on these sources:\n${context}`
+                content: `I searched additional sources for the data you requested. Here are the results:\n\n${context}\n\nDid I find the specific data point(s) you were looking for? If not, I can suggest other high-quality sources to search.`
               }
             ]
           }
           
-          // Start generating follow-up questions in parallel (before streaming answer)
-          const conversationPreview = isFollowUp 
-            ? messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n\n')
-            : `user: ${query}`
-            
+          // Generate follow-up suggestions for next sources to search
+          const remainingSources = getNextBestSources(sourcesToSearch.map(s => s.domain))
           const followUpPromise = generateText({
             model: openai('gpt-4o-mini'),
             messages: [
               {
                 role: 'system',
-                content: getFollowUpSystemPrompt(isFollowUp)
+                content: `Generate 3-5 specific suggestions for additional high-quality sources that might contain the requested data. Focus on sources that specialize in the type of data being requested.`
               },
               {
                 role: 'user',
-                content: `Query: ${query}\n\nConversation context:\n${conversationPreview}\n\n${sources.length > 0 ? `Available sources about: ${sources.map((s: { title: string }) => s.title).join(', ')}\n\n` : ''}Generate 5 diverse follow-up questions that would help the user learn more about this topic from different angles.`
+                content: `Query: ${query}\n\nSearched sources: ${sourcesToSearch.map(s => s.name).join(', ')}\n\nAvailable remaining sources: ${remainingSources.map(s => s.name).join(', ')}\n\nSuggest which additional sources would be most likely to contain the specific data requested.`
               }
             ],
             temperature: 0.7,
@@ -178,35 +184,38 @@ export async function POST(request: Request) {
           const result = streamText({
             model: openai('gpt-4o-mini'),
             messages: aiMessages,
-            temperature: 0.7,
+            temperature: 0.3, // Lower temperature for more precise data extraction
             maxTokens: 2000
           })
           
           // Merge the text stream into the data stream
-          // This ensures proper ordering of text chunks
           result.mergeIntoDataStream(dataStream)
           
-          // Wait for both the text generation and follow-up questions
+          // Wait for both the text generation and follow-up suggestions
           const [fullAnswer, followUpResponse] = await Promise.all([
             result.text,
             followUpPromise
           ])
           
-          // Process follow-up questions
-          const followUpQuestions = followUpResponse.text
+          // Process follow-up suggestions
+          const followUpSuggestions = followUpResponse.text
             .split('\n')
-            .map((q: string) => q.trim())
-            .filter((q: string) => q.length > 0)
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0)
             .slice(0, 5)
 
-          // Send follow-up questions after the answer is complete
-          dataStream.writeData({ type: 'follow_up_questions', questions: followUpQuestions })
+          // Send follow-up suggestions after the answer is complete
+          dataStream.writeData({ 
+            type: 'follow_up_suggestions', 
+            suggestions: followUpSuggestions,
+            remainingSources: remainingSources.map(s => ({ name: s.name, domain: s.domain, description: s.description }))
+          })
           
           // Signal completion
           dataStream.writeData({ type: 'complete' })
           
         } catch (error) {
-          console.error('Stream error:', error)
+          console.error('Deep search stream error:', error)
           
           // Handle specific error types
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -232,7 +241,7 @@ export async function POST(request: Request) {
             },
             504: {
               error: 'Request timeout',
-              suggestion: 'The search took too long. Try a simpler query or fewer sources.'
+              suggestion: 'The deep search took too long. Try a more specific query.'
             }
           }
           
@@ -262,13 +271,34 @@ export async function POST(request: Request) {
     })
     
   } catch (error) {
-    console.error('Search API error:', error)
+    console.error('Deep search API error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorStack = error instanceof Error ? error.stack : ''
     console.error('Error details:', { errorMessage, errorStack })
     return NextResponse.json(
-      { error: 'Search failed', message: errorMessage, details: errorStack },
+      { error: 'Deep search failed', message: errorMessage, details: errorStack },
       { status: 500 }
     )
   }
 }
+
+// Helper function to extract target data points from query
+function extractTargetDataPoints(query: string): string[] {
+  const dataPoints: string[] = []
+  const lowerQuery = query.toLowerCase()
+  
+  // Look for specific data types mentioned
+  const dataTypes = [
+    'revenue', 'profit', 'earnings', 'sales', 'growth', 'market cap',
+    'price', 'value', 'percentage', 'rate', 'ratio', 'index',
+    'gdp', 'inflation', 'unemployment', 'interest rate'
+  ]
+  
+  for (const dataType of dataTypes) {
+    if (lowerQuery.includes(dataType)) {
+      dataPoints.push(dataType)
+    }
+  }
+  
+  return dataPoints
+} 
