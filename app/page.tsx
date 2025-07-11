@@ -223,13 +223,12 @@ export default function FireplexityPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <Link
-              href="https://firecrawl.dev"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/"
+              className="flex items-center"
             >
               <Image 
-                src="/firecrawl-logo-with-fire.png" 
-                alt="Firecrawl Logo" 
+                src="/your-logo.png" 
+                alt="Your Logo" 
                 width={113} 
                 height={24}
                 className="w-[113px] h-auto"

@@ -190,17 +190,14 @@ export default function DeepSearchPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center">
                 <Image
-                  src="/firecrawl-logo-with-fire.png"
-                  alt="Fireplexity"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8"
+                  src="/your-logo.png"
+                  alt="Your Logo"
+                  width={113}
+                  height={24}
+                  className="w-[113px] h-auto"
                 />
-                <span className="text-xl font-bold text-gray-900 dark:text-white">
-                  Fireplexity
-                </span>
               </Link>
               <div className="hidden md:flex items-center space-x-4">
                 <Link 
