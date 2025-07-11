@@ -3,7 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, createDataStreamResponse } from 'ai'
 import { detectCompanyTicker } from '@/lib/company-ticker-map'
 import { getDeepDataSystemPrompt } from '@/lib/ai-config'
-import { getApprovedSourcesForQuery, getNextBestSources } from '@/lib/approved-sources'
+import { getApprovedSourcesForQuery, getNextBestSources, getApprovedSourcesForSector } from '@/lib/approved-sources'
 import { performDeepSearch, DeepSearchOptions } from '@/lib/deep-search'
 import FirecrawlApp from '@mendable/firecrawl-js'
 
@@ -41,9 +41,15 @@ export async function POST(request: Request) {
     // Initialize Firecrawl
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey })
 
-    // Get approved sources for this query
-    const approvedSources = getApprovedSourcesForQuery(query)
-    console.log(`[${requestId}] Selected sources:`, approvedSources.map(s => s.name))
+    // Get approved sources for this query or sector
+    let approvedSources
+    if (body.sector) {
+      approvedSources = getApprovedSourcesForSector(body.sector)
+      console.log(`[${requestId}] Sector selected: ${body.sector}. Sources:`, approvedSources.map(s => s.name))
+    } else {
+      approvedSources = getApprovedSourcesForQuery(query)
+      console.log(`[${requestId}] Selected sources:`, approvedSources.map(s => s.name))
+    }
 
     // Check if this is a follow-up search request
     const isFollowUpSearch = body.isFollowUpSearch || false
@@ -89,10 +95,10 @@ export async function POST(request: Request) {
             description: `${result.source.name} - ${result.contentType}`,
             content: result.content,
             markdown: result.content,
-            publishedDate: undefined,
-            author: undefined,
-            image: undefined,
-            favicon: undefined,
+            publishedDate: null,
+            author: null,
+            image: null,
+            favicon: null,
             siteName: result.source.name,
             relevanceScore: result.relevanceScore,
             contentType: result.contentType,

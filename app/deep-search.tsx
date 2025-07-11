@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { ErrorDisplay } from '@/components/error-display'
+import { LekplexityHero } from '../components/lekplexity-hero'
 
 interface MessageData {
   sources: SearchResult[]
@@ -40,6 +41,7 @@ export default function DeepSearchPage() {
   const [, setIsCheckingEnv] = useState<boolean>(true)
   const [pendingQuery, setPendingQuery] = useState<string>('')
   const [excludedDomains, setExcludedDomains] = useState<string[]>([])
+  const [sector, setSector] = useState<string>('Industrials')
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useChat({
     api: '/api/fireplexity/deep-search',
@@ -48,7 +50,8 @@ export default function DeepSearchPage() {
       ...(excludedDomains.length > 0 && { 
         isFollowUpSearch: true,
         excludedDomains 
-      })
+      }),
+      sector
     },
     onResponse: () => {
       // Clear status when response starts
@@ -181,6 +184,10 @@ export default function DeepSearchPage() {
     handleSubmit(e)
   }
 
+  const handleSectorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSector(e.target.value)
+  }
+
   const isChatActive = hasSearched || messages.length > 0
 
   return (
@@ -210,7 +217,7 @@ export default function DeepSearchPage() {
                   href="/deep-search" 
                   className="text-green-600 dark:text-green-400 font-medium"
                 >
-                  Deep Data Search
+                  Sector Search
                 </Link>
               </div>
             </div>
@@ -222,25 +229,23 @@ export default function DeepSearchPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!isChatActive ? (
           <div className="text-center">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Deep Data Search
-              </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                Search through pre-approved high-quality sources for specific data points. 
-                Get precise, accurate information from trusted financial, economic, and research sources.
+            <LekplexityHero />
+            <div className="mb-8 mt-4">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Sector Search</h2>
+              <p className="text-base text-gray-700 dark:text-gray-300 max-w-2xl mx-auto">
+                Conduct a deep search of curated sources for sector-specific data points.
               </p>
             </div>
-            
             <SearchComponent
               handleSubmit={handleSearch}
               input={input}
               handleInputChange={handleInputChange}
               isLoading={isLoading}
+              sector={sector}
+              onSectorChange={handleSectorChange}
             />
-            
             <div className="mt-8 text-sm text-gray-500 dark:text-gray-400">
-              <p>Powered by high-quality sources including SEC, Federal Reserve, Bloomberg, Reuters, and more.</p>
+              <p>Powered by L.E.K. grade sources including SEC, Federal Reserve, Bloomberg, Reuters, and more.</p>
             </div>
           </div>
         ) : (

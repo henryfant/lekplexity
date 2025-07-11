@@ -156,3 +156,27 @@ export function getSourceMetadata(url: string): ApprovedSource | null {
     domain.includes(source.domain) || source.domain.includes(domain)
   ) || null
 } 
+
+// Map of sector to domains
+const SECTOR_DOMAINS: Record<string, string[]> = {
+  Consumer: [
+    'bloomberg.com', 'reuters.com', 'finance.yahoo.com', 'investing.com', 'census.gov', 'sec.gov'
+  ],
+  Healthcare: [
+    'bloomberg.com', 'reuters.com', 'finance.yahoo.com', 'sec.gov', 'worldbank.org', 'imf.org'
+  ],
+  Industrials: [
+    'bloomberg.com', 'reuters.com', 'finance.yahoo.com', 'sec.gov', 'bea.gov', 'investing.com'
+  ],
+  TMT: [ // Technology, Media, Telecom
+    'bloomberg.com', 'reuters.com', 'finance.yahoo.com', 'sec.gov', 'investing.com', 'worldbank.org'
+  ]
+}
+
+export function getApprovedSourcesForSector(sector: string): ApprovedSource[] {
+  const domains = SECTOR_DOMAINS[sector] || []
+  return APPROVED_SOURCES
+    .filter(source => domains.includes(source.domain))
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 6)
+} 

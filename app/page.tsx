@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { ErrorDisplay } from '@/components/error-display'
+import { LekplexityHero } from '../components/lekplexity-hero'
 
 interface MessageData {
   sources: SearchResult[]
@@ -217,69 +218,59 @@ export default function FireplexityPage() {
   const isChatActive = hasSearched || messages.length > 0
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header with logo - matching other pages */}
-      <header className="px-4 sm:px-6 lg:px-8 py-1 mt-2">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <Link
-              href="/"
-              className="flex items-center"
-            >
-              <Image 
-                src="/your-logo.png" 
-                alt="Your Logo" 
-                width={113} 
-                height={24}
-                className="w-[113px] h-auto"
-              />
-            </Link>
-            <div className="hidden md:flex items-center space-x-4">
-              <Link 
-                href="/" 
-                className="text-green-600 dark:text-green-400 font-medium"
-              >
-                Regular Search
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
+      {/* Header - copied from deep search for consistency */}
+      <header className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/your-logo.png"
+                  alt="Your Logo"
+                  width={113}
+                  height={24}
+                  className="w-[113px] h-auto"
+                />
               </Link>
-              <Link 
-                href="/deep-search" 
-                className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Deep Data Search
-              </Link>
+              <div className="hidden md:flex items-center space-x-4">
+                <Link 
+                  href="/" 
+                  className="text-green-600 dark:text-green-400 font-medium"
+                >
+                  Regular Search
+                </Link>
+                <Link 
+                  href="/deep-search" 
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  Sector Search
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero section - matching other pages */}
-      <div className={`px-4 sm:px-6 lg:px-8 pt-2 pb-4 transition-all duration-500 ${isChatActive ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-[2.5rem] lg:text-[3.8rem] text-[#36322F] dark:text-white font-semibold tracking-tight leading-[1.1] opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
-            <span className="relative px-1 pb-1 text-transparent bg-clip-text bg-gradient-to-tr from-green-700 to-green-400 inline-flex justify-center items-center">
-              LEKplexity
-            </span>
-            <span className="block leading-[1.1] opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:400ms] [animation-fill-mode:forwards]">
-              Search & Scrape
-            </span>
-          </h1>
-          <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400 opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:600ms] [animation-fill-mode:forwards]">
-            AI-powered web search with instant results and follow-up questions
-          </p>
-        </div>
-      </div>
-
-      {/* Main content wrapper */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto h-full">
-          {!isChatActive ? (
+      {/* Hero section and headings - match sector search layout */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!isChatActive ? (
+          <div className="text-center">
+            <LekplexityHero />
+            <div className="mb-8 mt-4">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Regular Search</h2>
+              <p className="text-base text-gray-700 dark:text-gray-300 max-w-2xl mx-auto">
+                General-purpose web search across curated and real-time sources. Use this to find facts, news, and data from a broad range of online content.
+              </p>
+            </div>
             <SearchComponent 
               handleSubmit={handleSearch}
               input={input}
               handleInputChange={handleInputChange}
               isLoading={isLoading}
             />
-          ) : (
+          </div>
+        ) : (
             <ChatInterface 
               messages={messages}
               sources={sources}
@@ -293,25 +284,9 @@ export default function FireplexityPage() {
               currentTicker={currentTicker}
             />
           )}
-        </div>
-      </div>
+        </main>
 
       {/* Footer - matching other pages */}
-      <footer className="px-4 sm:px-6 lg:px-8 py-8 mt-auto">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Powered by{' '}
-            <a 
-              href="https://firecrawl.dev" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium"
-            >
-              Firecrawl
-            </a>
-          </p>
-        </div>
-      </footer>
       
       {/* API Key Modal */}
       <Dialog open={showApiKeyModal} onOpenChange={setShowApiKeyModal}>
