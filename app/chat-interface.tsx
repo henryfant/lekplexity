@@ -347,7 +347,7 @@ export function ChatInterface({
                                 </button>
                               </div>
                             </div>
-                            <div className="prose prose-gray max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-green-600 dark:prose-a:text-green-400 prose-a:no-underline hover:prose-a:underline">
+                            <div className="prose prose-slate max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-green-600 dark:prose-a:text-green-400 prose-a:no-underline hover:prose-a:underline text-gray-500 dark:text-gray-300">
                               <MarkdownRenderer 
                                 content={pair.assistant?.content || ''}
                                 sources={messageSources}
@@ -578,7 +578,7 @@ export function ChatInterface({
                 )}
               </div>
               <div>
-                <div className="prose prose-gray max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-gray-100 dark:prose-pre:bg-zinc-900">
+                <div className="prose prose-slate max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:bg-gray-100 dark:prose-pre:bg-zinc-900 text-gray-500 dark:text-gray-300">
                   <MarkdownRenderer 
                     content={messages[messages.length - 1].content || ''}
                     sources={sources}
@@ -739,7 +739,7 @@ export function ChatInterface({
                       }
                     }}
                     placeholder="Ask a follow-up question..."
-                    className="resize-none border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-3 pr-2 shadow-none focus-visible:ring-0 focus-visible:border-0 flex-1"
+                    className="resize-none border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-3 pr-2 shadow-none focus-visible:ring-0 focus-visible:border-0 flex-1 text-gray-500 dark:text-gray-300"
                     rows={1}
                     style={{
                       minHeight: '44px',

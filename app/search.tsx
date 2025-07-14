@@ -37,7 +37,7 @@ export function SearchComponent({ handleSubmit, input, handleInputChange, isLoad
                 value={input}
                 onChange={handleInputChange}
                 placeholder={sector ? `Search ${sector} sector insights...` : "Ask anything..."}
-                className="flex-1 h-14 text-lg border-0 bg-transparent focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-gray-500 pr-2"
+                className="flex-1 h-14 text-lg border-0 bg-transparent focus:ring-0 placeholder:text-gray-400 dark:placeholder:text-gray-500 pr-2 text-gray-500 dark:text-gray-300"
                 disabled={isLoading}
               />
               
