@@ -3,6 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, createDataStreamResponse } from 'ai'
 import { detectCompanyTicker } from '@/lib/company-ticker-map'
 import { getSystemPrompt, getFollowUpSystemPrompt } from '@/lib/ai-config'
+import { selectModel, logModelSelection } from '@/lib/model-router'
 
 export async function POST(request: Request) {
   const requestId = Math.random().toString(36).substring(7)
@@ -19,6 +20,12 @@ export async function POST(request: Request) {
 
     const firecrawlApiKey = process.env.FIRECRAWL_API_KEY
     const openaiApiKey = process.env.OPENAI_API_KEY
+    
+    // Extract model preferences from request body
+    const modelPreferences = {
+      forceModel: body.forceModel,
+      preferCostOptimized: body.preferCostOptimized
+    }
     
     if (!firecrawlApiKey) {
       return NextResponse.json({ error: 'Firecrawl API key not configured' }, { status: 500 })
@@ -181,9 +188,13 @@ export async function POST(request: Request) {
           const conversationPreview = isFollowUp 
             ? messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n\n')
             : `user: ${query}`
+          
+          // Select model for follow-up questions generation
+          const followUpModel = selectModel('follow_up', query, modelPreferences)
+          logModelSelection('follow_up', query, followUpModel)
             
           const followUpPromise = generateText({
-            model: openai('gpt-4o'),
+            model: openai(followUpModel),
             messages: [
               {
                 role: 'system',
@@ -198,9 +209,16 @@ export async function POST(request: Request) {
             maxTokens: 150,
           })
           
+          // Select model for main synthesis based on query complexity
+          const synthesisModel = selectModel('synthesis', query, {
+            ...modelPreferences,
+            contextLength: context.length
+          })
+          logModelSelection('synthesis', query, synthesisModel, `Context length: ${context.length}`)
+          
           // Stream the text generation
           const result = streamText({
-            model: openai('gpt-4o'),
+            model: openai(synthesisModel),
             messages: aiMessages,
             temperature: 0.7,
             maxTokens: 2000

@@ -5,8 +5,7 @@ import { SearchComponent } from './search'
 import { ChatInterface } from './chat-interface'
 import { SearchResult } from './types'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import Image from 'next/image'
+import { Header } from '@/components/ui/header'
 import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
@@ -220,37 +219,7 @@ export default function FireplexityPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
       {/* Header - copied from deep search for consistency */}
-      <header className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center">
-                <Image
-                  src="/your-logo.png"
-                  alt="Your Logo"
-                  width={113}
-                  height={24}
-                  className="w-[113px] h-auto"
-                />
-              </Link>
-              <div className="hidden md:flex items-center space-x-4">
-                <Link 
-                  href="/" 
-                  className="text-green-600 dark:text-green-400 font-medium"
-                >
-                  Regular Search
-                </Link>
-                <Link 
-                  href="/deep-search" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  Sector Search
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero section and headings - match sector search layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

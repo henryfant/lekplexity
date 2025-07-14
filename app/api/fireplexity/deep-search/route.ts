@@ -5,6 +5,7 @@ import { detectCompanyTicker } from '@/lib/company-ticker-map'
 import { getDeepDataSystemPrompt } from '@/lib/ai-config'
 import { getApprovedSourcesForQuery, getNextBestSources, getApprovedSourcesForSector } from '@/lib/approved-sources'
 import { performDeepSearch, DeepSearchOptions } from '@/lib/deep-search'
+import { selectModel, logModelSelection } from '@/lib/model-router'
 import FirecrawlApp from '@mendable/firecrawl-js'
 
 export async function POST(request: Request) {
@@ -24,6 +25,12 @@ export async function POST(request: Request) {
     // Use API key from request body if provided, otherwise fall back to environment variable
     const firecrawlApiKey = body.firecrawlApiKey || process.env.FIRECRAWL_API_KEY
     const openaiApiKey = process.env.OPENAI_API_KEY
+    
+    // Extract model preferences from request body
+    const modelPreferences = {
+      forceModel: body.forceModel,
+      preferCostOptimized: body.preferCostOptimized
+    }
     
     if (!firecrawlApiKey) {
       return NextResponse.json({ error: 'Firecrawl API key not configured' }, { status: 500 })
@@ -170,8 +177,13 @@ export async function POST(request: Request) {
           
           // Generate follow-up suggestions for next sources to search
           const remainingSources = getNextBestSources(sourcesToSearch.map(s => s.domain))
+          
+          // Select model for follow-up suggestions
+          const followUpModel = selectModel('follow_up', query, modelPreferences)
+          logModelSelection('follow_up', query, followUpModel, 'Deep search follow-up')
+          
           const followUpPromise = generateText({
-            model: openai('gpt-4o-mini'),
+            model: openai(followUpModel),
             messages: [
               {
                 role: 'system',
@@ -186,9 +198,16 @@ export async function POST(request: Request) {
             maxTokens: 150,
           })
           
+          // Select model for data extraction based on query complexity
+          const dataExtractionModel = selectModel('data_extraction', query, {
+            ...modelPreferences,
+            contextLength: context.length
+          })
+          logModelSelection('data_extraction', query, dataExtractionModel, `Deep search data extraction, context: ${context.length}`)
+          
           // Stream the text generation
           const result = streamText({
-            model: openai('gpt-4o-mini'),
+            model: openai(dataExtractionModel),
             messages: aiMessages,
             temperature: 0.3, // Lower temperature for more precise data extraction
             maxTokens: 2000

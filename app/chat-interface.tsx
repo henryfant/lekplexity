@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Send, Loader2, User, Sparkles, FileText, Plus, Copy, RefreshCw, Check } from 'lucide-react'
+import { Send, Loader2, User, Sparkles, FileText, Plus, Copy, RefreshCw, Check, Bot, ArrowDown } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -181,198 +181,213 @@ export function ChatInterface({
                   <div key={pairIndex} className="space-y-6">
                     {/* User message */}
                     {pair.user && (
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{pair.user.content}</h2>
+                      <div className="relative group">
+                        <div className="absolute -left-12 top-1 hidden lg:block">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-zinc-700 dark:to-zinc-600 flex items-center justify-center">
+                            <User className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                          </div>
+                        </div>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">{pair.user.content}</h2>
                       </div>
                     )}
                     {pair.assistant && (
-                      <>
-                        {/* Sources - Show for each assistant response */}
-                        {messageSources.length > 0 && (
-                          <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-yellow-500" />
-                                <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sources</h2>
-                              </div>
-                              {messageSources.length > 5 && (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">+{messageSources.length - 5} more</span>
-                                  <div className="flex -space-x-2">
-                                    {messageSources.slice(5, 10).map((result, idx) => (
-                                      <div key={idx} className="w-5 h-5 bg-white dark:bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600">
-                                        {result.favicon ? (
-                                          <Image
-                                            src={result.favicon}
-                                            alt=""
-                                            width={16}
-                                            height={16}
-                                            className="w-4 h-4 object-contain"
-                                            onError={(e) => {
-                                              const target = e.target as HTMLImageElement
-                                              target.style.display = 'none'
-                                            }}
-                                          />
-                                        ) : (
-                                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                                          </svg>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-5 gap-2">
-                              {messageSources.slice(0, 5).map((result, idx) => (
-                                <a
-                                  key={idx}
-                                  href={result.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 hover:shadow-md opacity-0 animate-fade-up h-28"
-                                  style={{
-                                    animationDelay: `${300 + idx * 30}ms`,
-                                    animationDuration: '400ms',
-                                    animationFillMode: 'forwards'
-                                  }}
-                                >
-                                  {/* Background image */}
-                                  {result.image && (
-                                    <div className="absolute inset-0">
-                                      <Image
-                                        src={result.image}
-                                        alt=""
-                                        fill
-                                        sizes="(max-width: 640px) 20vw, (max-width: 1024px) 16vw, 12vw"
-                                        className="object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement
-                                          target.style.display = 'none'
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                  
-                                  {/* Gradient overlay - lighter for visibility */}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-white/50 dark:from-zinc-800/90 dark:via-zinc-800/70 dark:to-zinc-800/50" />
-                                  
-                                  {/* Content */}
-                                  <div className="relative p-3 flex flex-col justify-between h-full">
-                                    {/* Favicon and domain */}
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="flex-shrink-0 w-4 h-4 bg-white/80 dark:bg-zinc-700/80 rounded flex items-center justify-center overflow-hidden">
-                                        {result.favicon ? (
-                                          <Image
-                                            src={result.favicon}
-                                            alt=""
-                                            width={12}
-                                            height={12}
-                                            className="w-3 h-3 object-contain"
-                                            onError={(e) => {
-                                              const target = e.target as HTMLImageElement
-                                              target.style.display = 'none'
-                                            }}
-                                          />
-                                        ) : (
-                                          <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                                          </svg>
-                                        )}
-                                      </div>
-                                      <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate flex-1 font-medium">
-                                        {result.siteName || new URL(result.url).hostname.replace('www.', '')}
-                                      </p>
-                                    </div>
-                                    
-                                    {/* Title */}
-                                                          <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
-                        {result.title}
-                      </h3>
-                                    
-                                    {/* Character count */}
-                                    <div className="mt-1">
-                                      <CharacterCounter 
-                                        targetCount={result.markdown?.length || result.content?.length || 0} 
-                                        duration={2000}
-                                      />
-                                    </div>
-                                  </div>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        
-                        {/* Stock Chart - Show if ticker is available */}
-                        {messageTicker && (
-                          <div className="mb-6">
-                            <StockChart ticker={messageTicker} theme={theme} />
-                          </div>
-                        )}
-                        
-                        {/* Answer */}
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-orange-500" />
-                              <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Answer</h2>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleCopy(pair.assistant?.content || '', `message-${pairIndex}`)}
-                                className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                                title={copiedMessageId === `message-${pairIndex}` ? "Copied!" : "Copy response"}
-                              >
-                                {copiedMessageId === `message-${pairIndex}` ? (
-                                  <Check className="h-3.5 w-3.5 text-green-500" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="prose prose-gray max-w-none dark:prose-invert">
-                            <MarkdownRenderer 
-                              content={pair.assistant?.content || ''}
-                              sources={messageSources}
-                            />
+                      <div className="relative">
+                        <div className="absolute -left-12 top-1 hidden lg:block">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                            <Bot className="h-4 w-4 text-white" />
                           </div>
                         </div>
-                        
-                        {/* Related Questions - Show after each assistant response */}
-                        {messageFollowUpQuestions.length > 0 && (
-                          <div className="opacity-0 animate-fade-up [animation-duration:300ms] [animation-fill-mode:forwards] mt-6">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Sparkles className="h-4 w-4 text-red-500" />
-                              <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Related</h2>
-                            </div>
-                            <div className="space-y-2">
-                              {messageFollowUpQuestions.map((question, qIndex) => (
-                                <button
-                                  key={qIndex}
-                                  onClick={() => handleFollowUpClick(question)}
-                                  className="w-full text-left p-2 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 hover:shadow-md group opacity-0 animate-fade-up"
-                                  style={{
-                                    animationDelay: `${qIndex * 50}ms`,
-                                    animationDuration: '300ms',
-                                    animationFillMode: 'forwards'
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Plus className="h-4 w-4 text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0" />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                                      {question}
-                                    </span>
+                        <div className="space-y-6">
+                          {/* Sources - Show for each assistant response */}
+                          {messageSources.length > 0 && (
+                            <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1 w-1 rounded-full bg-amber-500 animate-pulse" />
+                                  <FileText className="h-4 w-4 text-amber-500" />
+                                  <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sources</h2>
+                                </div>
+                                {messageSources.length > 5 && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">+{messageSources.length - 5} more</span>
+                                    <div className="flex -space-x-2">
+                                      {messageSources.slice(5, 10).map((result, idx) => (
+                                        <div key={idx} className="w-5 h-5 bg-white dark:bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600">
+                                          {result.favicon ? (
+                                            <Image
+                                              src={result.favicon}
+                                              alt=""
+                                              width={16}
+                                              height={16}
+                                              className="w-4 h-4 object-contain"
+                                              onError={(e) => {
+                                                const target = e.target as HTMLImageElement
+                                                target.style.display = 'none'
+                                              }}
+                                            />
+                                          ) : (
+                                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-5 gap-2">
+                                {messageSources.slice(0, 5).map((result, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={result.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 hover:shadow-md opacity-0 animate-fade-up h-28"
+                                    style={{
+                                      animationDelay: `${300 + idx * 30}ms`,
+                                      animationDuration: '400ms',
+                                      animationFillMode: 'forwards'
+                                    }}
+                                  >
+                                    {/* Background image */}
+                                    {result.image && (
+                                      <div className="absolute inset-0">
+                                        <Image
+                                          src={result.image}
+                                          alt=""
+                                          fill
+                                          sizes="(max-width: 640px) 20vw, (max-width: 1024px) 16vw, 12vw"
+                                          className="object-cover"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.style.display = 'none'
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                    
+                                    {/* Gradient overlay - lighter for visibility */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-white/50 dark:from-zinc-800/90 dark:via-zinc-800/70 dark:to-zinc-800/50" />
+                                    
+                                    {/* Content */}
+                                    <div className="relative p-3 flex flex-col justify-between h-full">
+                                      {/* Favicon and domain */}
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="flex-shrink-0 w-4 h-4 bg-white/80 dark:bg-zinc-700/80 rounded flex items-center justify-center overflow-hidden">
+                                          {result.favicon ? (
+                                            <Image
+                                              src={result.favicon}
+                                              alt=""
+                                              width={12}
+                                              height={12}
+                                              className="w-3 h-3 object-contain"
+                                              onError={(e) => {
+                                                const target = e.target as HTMLImageElement
+                                                target.style.display = 'none'
+                                              }}
+                                            />
+                                          ) : (
+                                            <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate flex-1 font-medium">
+                                          {result.siteName || new URL(result.url).hostname.replace('www.', '')}
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Title */}
+                                                      <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
+                        {result.title}
+                      </h3>
+                                      
+                                      {/* Character count */}
+                                      <div className="mt-1">
+                                        <CharacterCounter 
+                                          targetCount={result.markdown?.length || result.content?.length || 0} 
+                                          duration={2000}
+                                        />
+                                      </div>
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          
+                          {/* Stock Chart - Show if ticker is available */}
+                          {messageTicker && (
+                            <div className="mb-6">
+                              <StockChart ticker={messageTicker} theme={theme} />
+                            </div>
+                          )}
+                          
+                          {/* Answer */}
+                          <div className="bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-zinc-800/50 dark:to-zinc-900/50 rounded-2xl p-6 backdrop-blur-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                                <Sparkles className="h-4 w-4 text-emerald-500" />
+                                <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Answer</h2>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleCopy(pair.assistant?.content || '', `message-${pairIndex}`)}
+                                  className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-all duration-200"
+                                  title={copiedMessageId === `message-${pairIndex}` ? "Copied!" : "Copy response"}
+                                >
+                                  {copiedMessageId === `message-${pairIndex}` ? (
+                                    <Check className="h-3.5 w-3.5 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
                                 </button>
-                              ))}
+                              </div>
+                            </div>
+                            <div className="prose prose-gray max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-green-600 dark:prose-a:text-green-400 prose-a:no-underline hover:prose-a:underline">
+                              <MarkdownRenderer 
+                                content={pair.assistant?.content || ''}
+                                sources={messageSources}
+                              />
                             </div>
                           </div>
-                        )}
-                      </>
+                          
+                          {/* Related Questions - Show after each assistant response */}
+                          {messageFollowUpQuestions.length > 0 && (
+                            <div className="opacity-0 animate-fade-up [animation-duration:300ms] [animation-fill-mode:forwards] mt-6">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="h-1 w-1 rounded-full bg-violet-500 animate-pulse" />
+                                <Sparkles className="h-4 w-4 text-violet-500" />
+                                <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Related Questions</h2>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {messageFollowUpQuestions.map((question, qIndex) => (
+                                  <button
+                                    key={qIndex}
+                                    onClick={() => handleFollowUpClick(question)}
+                                    className="w-full text-left p-3 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all duration-200 hover:shadow-md group opacity-0 animate-fade-up"
+                                    style={{
+                                      animationDelay: `${qIndex * 50}ms`,
+                                      animationDuration: '300ms',
+                                      animationFillMode: 'forwards'
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Plus className="h-4 w-4 text-gray-400 group-hover:text-violet-500 transition-colors flex-shrink-0" />
+                                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors line-clamp-2">
+                                        {question}
+                                      </span>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )
@@ -384,16 +399,23 @@ export function ChatInterface({
           {/* Current Query display */}
           {query && (messages.length <= 2 || messages[messages.length - 1]?.role === 'user' || messages[messages.length - 1]?.role === 'assistant') && (
             <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-fill-mode:forwards]">
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">{query}</h1>
+              <div className="relative group">
+                <div className="absolute -left-12 top-1 hidden lg:block">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-zinc-700 dark:to-zinc-600 flex items-center justify-center">
+                    <User className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </div>
+                </div>
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">{query}</h1>
+              </div>
             </div>
           )}
 
           {/* Status message */}
           {searchStatus && (
             <div className="opacity-0 animate-fade-up [animation-duration:300ms] [animation-fill-mode:forwards] mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{searchStatus}</span>
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800 rounded-lg px-4 py-3">
+                <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                <span className="font-medium">{searchStatus}</span>
               </div>
             </div>
           )}
@@ -699,43 +721,51 @@ export function ChatInterface({
 
       {/* Fixed input at bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 dark:from-zinc-900 dark:via-zinc-900/95 to-transparent pt-6 pb-6 z-10">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <form onSubmit={handleFormSubmit} ref={formRef}>
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 focus-within:border-gray-900 dark:focus-within:border-gray-100 transition-colors">
-              <div className="flex items-end gap-2">
-                <Textarea
-                  value={input}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      formRef.current?.requestSubmit()
-                    }
-                  }}
-                  placeholder="Ask a follow-up question..."
-                  className="resize-none border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-2 pr-2 shadow-none focus-visible:ring-0 focus-visible:border-0"
-                  rows={1}
-                  style={{
-                    minHeight: '36px',
-                    maxHeight: '100px',
-                    scrollbarWidth: 'thin',
-                    boxShadow: 'none'
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-full h-8 w-8 min-h-[32px] min-w-[32px] flex items-center justify-center flex-shrink-0 transition-colors"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
+            <div className="relative group">
+              {/* Animated border gradient */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 rounded-2xl opacity-0 group-focus-within:opacity-100 blur transition duration-500" />
+              
+              <div className="relative bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-1 transition-all duration-300">
+                <div className="flex items-end gap-2">
+                  <Textarea
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        formRef.current?.requestSubmit()
+                      }
+                    }}
+                    placeholder="Ask a follow-up question..."
+                    className="resize-none border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-3 pr-2 shadow-none focus-visible:ring-0 focus-visible:border-0 flex-1"
+                    rows={1}
+                    style={{
+                      minHeight: '44px',
+                      maxHeight: '120px',
+                      scrollbarWidth: 'thin',
+                      boxShadow: 'none'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || isLoading}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed text-white rounded-xl h-10 w-10 min-h-[40px] min-w-[40px] flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-lg hover:shadow-xl mb-1 mr-1"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
+          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+            Press <kbd className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-zinc-700 rounded">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 dark:bg-zinc-700 rounded">Shift+Enter</kbd> for new line
+          </p>
         </div>
       </div>
     </div>

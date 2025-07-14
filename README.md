@@ -12,10 +12,12 @@ A blazing-fast AI search engine powered by Firecrawl's web scraping API. Get int
 
 - **Real-time Web Search** - Powered by Firecrawl's search API
 - **Deep Data Search** - Extract specific data from high-quality sources
-- **AI Responses** - Streaming answers with GPT-4o-mini
+- **Intelligent Model Selection** - Automatic OpenAI model routing based on query complexity
+- **AI Responses** - Streaming answers with optimized model selection
 - **Source Citations** - Every claim backed by references
 - **Live Stock Data** - Automatic TradingView charts
 - **Smart Follow-ups** - AI-generated questions
+- **Cost Optimization** - Smart model selection to balance quality and token costs
 
 ## Quick Start
 
@@ -39,6 +41,11 @@ OPENAI_API_KEY=sk-your-api-key
 # Optional: Customize AI behavior
 AI_SYSTEM_PROMPT="Your custom system prompt here"
 AI_FOLLOWUP_SYSTEM_PROMPT="Your custom follow-up prompt here"
+
+# Optional: Model Router Configuration
+AI_PREFER_COST_OPTIMIZED=true  # Prefer cheaper models when possible
+AI_MAX_MODEL_TIER=reasoning     # Options: mini, standard, reasoning
+AI_FORCE_MODEL=gpt-4o          # Force specific model (overrides auto-selection)
 ```
 
 ### Run
@@ -48,11 +55,26 @@ npm run dev
 
 Visit http://localhost:3000
 
+## AI Model Router
+
+Fireplexity includes an intelligent model router that automatically selects the best OpenAI model based on:
+- **Query complexity** - Simple vs. complex analysis
+- **Task type** - Scraping, synthesis, or data extraction
+- **Context length** - Adjusts for large contexts
+- **Cost optimization** - Balances quality with token costs
+
+Models used:
+- `gpt-4o-mini` - Simple queries, scraping (lowest cost)
+- `gpt-4o` - Complex synthesis, analysis
+- `o1-mini` - Deep reasoning, technical analysis
+
+See [Model Router Guide](MODEL_ROUTER_GUIDE.md) for detailed configuration.
+
 ## Tech Stack
 
 - **Firecrawl** - Web scraping API
 - **Next.js 15** - React framework
-- **OpenAI** - GPT-4o-mini
+- **OpenAI** - Multiple models with automatic selection
 - **Vercel AI SDK** - Streaming
 - **TradingView** - Stock charts
 
@@ -67,6 +89,7 @@ Visit http://localhost:3000
 - [Discord Community](https://discord.gg/firecrawl)
 - [AI System Prompt Configuration](AI_SYSTEM_PROMPT_SETUP.md)
 - [Deep Data Search Guide](DEEP_SEARCH_GUIDE.md)
+- [AI Model Router Guide](MODEL_ROUTER_GUIDE.md)
 
 ## License
 
