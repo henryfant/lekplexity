@@ -1,4 +1,10 @@
-import { ApprovedSource, getSourceMetadata } from './approved-sources'
+import { ApprovedSource } from '../app/types'
+import { performMultiStrategySearch, SearchResult as StrategySearchResult, SearchOptions, DataPoint } from './search-strategies'
+import { sourceDiscovery } from './ai-source-discovery'
+import { intelligentCrawler, CrawlOptions } from './intelligent-crawler'
+import { qualityScorer, ScoredResult } from './quality-scoring'
+import FirecrawlApp from '@mendable/firecrawl-js'
+
 
 export interface DeepSearchResult {
   url: string
@@ -9,6 +15,18 @@ export interface DeepSearchResult {
   relevanceScore: number
   dataPoints: string[]
   source: ApprovedSource
+  qualityMetrics?: {
+    authorityScore: number
+    freshnessScore: number
+    completenessScore: number
+    accuracyScore: number
+    relevanceScore: number
+    overallScore: number
+    confidence: number
+    explanation: string
+  }
+  verificationStatus?: 'verified' | 'partial' | 'unverified'
+  crossReferences?: string[]
 }
 
 export interface DeepSearchOptions {
@@ -17,340 +35,214 @@ export interface DeepSearchOptions {
   includeSpreadsheets: boolean
   includeDatabases: boolean
   targetDataPoints: string[]
+  useMultiStrategy?: boolean
+  useAIDiscovery?: boolean
+  useIntelligentCrawling?: boolean
+  useQualityScoring?: boolean
+  sector?: string // Added for AI discovery
 }
 
-// Perform deep search on approved sources
+// Enhanced deep search with new capabilities
 export async function performDeepSearch(
   query: string,
-  sources: ApprovedSource[],
   options: DeepSearchOptions,
-  firecrawlApiKey: string
+  firecrawlApiKey: string,
+  progressCallback?: (progress: { completed: number; total: number; stage?: string, source?: ApprovedSource }) => void
 ): Promise<DeepSearchResult[]> {
-  const results: DeepSearchResult[] = []
   
-  // Search top 2-3 most relevant sources first
-  const topSources = sources.slice(0, 3)
-  
-  for (const source of topSources) {
-    try {
-      const sourceResults = await searchSingleSource(query, source, options, firecrawlApiKey)
-      results.push(...sourceResults)
-    } catch (error) {
-      console.error(`Error searching ${source.domain}:`, error)
+  const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey })
+
+  // Stage 1: Broad Web Search
+  if (progressCallback) {
+    progressCallback({ completed: 0, total: 1, stage: 'Conducting broad web search...' })
+  }
+
+  const searchResults = await firecrawl.search(query, {
+    limit: 20, // Get more initial results to filter
+    scrapeOptions: {
+      formats: ['markdown'],
+      onlyMainContent: true
     }
-  }
-  
-  // Sort by relevance score
-  return results.sort((a, b) => b.relevanceScore - a.relevanceScore)
-}
+  })
 
-async function searchSingleSource(
-  query: string,
-  source: ApprovedSource,
-  options: DeepSearchOptions,
-  firecrawlApiKey: string
-): Promise<DeepSearchResult[]> {
-  const results: DeepSearchResult[] = []
-  
-  // 1. Search main website content
-  const webResults = await searchWebContent(query, source, firecrawlApiKey)
-  results.push(...webResults)
-  
-  // 2. Search files if enabled and supported
-  if (options.includeFiles && source.searchCapabilities.includes('files')) {
-    const fileResults = await searchFiles(query, source, options, firecrawlApiKey)
-    results.push(...fileResults)
-  }
-  
-  // 3. Search spreadsheets if enabled and supported
-  if (options.includeSpreadsheets && source.searchCapabilities.includes('spreadsheets')) {
-    const spreadsheetResults = await searchSpreadsheets(query, source, options, firecrawlApiKey)
-    results.push(...spreadsheetResults)
-  }
-  
-  // 4. Search databases if enabled and supported
-  if (options.includeDatabases && source.searchCapabilities.includes('databases')) {
-    const databaseResults = await searchDatabases(query, source, options, firecrawlApiKey)
-    results.push(...databaseResults)
-  }
-  
-  return results
-}
+  let allResults: StrategySearchResult[] = searchResults.data?.map((item: any) => ({
+    url: item.url,
+    title: item.title || item.url,
+    content: item.markdown || item.content || '',
+    summary: (item.markdown || item.content || '').substring(0, 300), // Add summary
+    confidence: item.score || 0.5, // Use firecrawl score as initial confidence
+    dataPoints: [], // Will be populated later if needed
+    strategy: 'Broad Web Search',
+    metadata: item.metadata || {} // Add metadata
+  })) || []
 
-async function searchWebContent(
-  query: string,
-  source: ApprovedSource,
-  firecrawlApiKey: string
-): Promise<DeepSearchResult[]> {
-  try {
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        limit: 5,
-        scrapeOptions: {
-          formats: ['markdown'],
-          onlyMainContent: true,
-          maxAge: 6048000
-        },
-        filters: {
-          includeDomains: [source.domain]
-        }
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Firecrawl API error: ${response.statusText}`)
-    }
-
-    const searchData = await response.json()
-    
-    return searchData.data?.map((item: any) => ({
-      url: item.url,
-      title: item.title || item.url,
-      content: item.markdown || item.content || '',
-      contentType: 'webpage' as const,
-      relevanceScore: calculateRelevanceScore(query, item.markdown || item.content || ''),
-      dataPoints: extractDataPoints(query, item.markdown || item.content || ''),
-      source
-    })) || []
-  } catch (error) {
-    console.error(`Error searching web content for ${source.domain}:`, error)
-    return []
+  if (progressCallback) {
+    progressCallback({ completed: 1, total: 1, stage: 'Initial search complete. Scoring results...' })
   }
-}
 
-async function searchFiles(
-  query: string,
-  source: ApprovedSource,
-  options: DeepSearchOptions,
-  firecrawlApiKey: string
-): Promise<DeepSearchResult[]> {
-  const results: DeepSearchResult[] = []
+  // Stage 2: Quality scoring and ranking
+  let scoredResults: ScoredResult[] = []
   
-  // Search for different file types
-  for (const fileExt of source.fileExtensions || []) {
-    try {
-      const fileQuery = `${query} filetype:${fileExt.replace('.', '')} site:${source.domain}`
-      
-      const response = await fetch('https://api.firecrawl.dev/v1/search', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${firecrawlApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: fileQuery,
-          limit: 3,
-          scrapeOptions: {
-            formats: ['markdown'],
-            onlyMainContent: true,
-            maxAge: 6048000
-          },
-          filters: {
-            includeDomains: [source.domain]
-          }
-        }),
+  if (options.useQualityScoring !== false && allResults.length > 0) {
+    if (progressCallback) {
+      progressCallback({ 
+        completed: 0, 
+        total: allResults.length, 
+        stage: 'Scoring and verifying results...' 
       })
+    }
 
-      if (response.ok) {
-        const searchData = await response.json()
-        
-        const fileResults = searchData.data?.map((item: any) => ({
-          url: item.url,
-          title: item.title || item.url,
-          content: item.markdown || item.content || '',
-          contentType: 'file' as const,
-          fileType: fileExt,
-          relevanceScore: calculateRelevanceScore(query, item.markdown || item.content || ''),
-          dataPoints: extractDataPoints(query, item.markdown || item.content || ''),
-          source
-        })) || []
-        
-        results.push(...fileResults)
-      }
+    try {
+      scoredResults = await qualityScorer.scoreResults(
+        allResults,
+        query,
+        options.sector
+      )
     } catch (error) {
-      console.error(`Error searching files for ${source.domain}:`, error)
+      console.error('Quality scoring failed:', error)
+      // Fallback to unscored results
+      scoredResults = allResults.map(r => ({
+        ...r,
+        qualityMetrics: {
+          authorityScore: 0.5,
+          freshnessScore: 0.5,
+          completenessScore: 0.5,
+          accuracyScore: 0.5,
+          relevanceScore: r.confidence,
+          overallScore: r.confidence,
+          confidence: r.confidence,
+          explanation: 'Quality scoring unavailable'
+        },
+        verificationStatus: 'unverified' as const,
+        crossReferences: []
+      }))
     }
   }
-  
-  return results
-}
 
-async function searchSpreadsheets(
-  query: string,
-  source: ApprovedSource,
-  options: DeepSearchOptions,
-  firecrawlApiKey: string
-): Promise<DeepSearchResult[]> {
-  // Search for spreadsheet files specifically
-  const spreadsheetExtensions = ['.xlsx', '.xls', '.csv']
-  const results: DeepSearchResult[] = []
-  
-  for (const ext of spreadsheetExtensions) {
-    if (source.fileExtensions?.includes(ext)) {
+  // Stage 3: Intelligent Crawling on promising results
+  if (options.useIntelligentCrawling !== false && scoredResults.length > 0) {
+    const topResultsToCrawl = scoredResults.slice(0, 3) // Crawl top 3 results
+
+    if (progressCallback) {
+      progressCallback({
+        completed: 0,
+        total: topResultsToCrawl.length,
+        stage: `Performing deep dive on ${topResultsToCrawl.length} promising sources...`
+      })
+    }
+
+    const crawlOptions: CrawlOptions = {
+      maxDepth: 2, // Limit depth to avoid excessive crawling
+      maxPages: 10,
+      followLinks: true,
+      adaptiveDepth: true,
+      firecrawlApiKey: firecrawlApiKey
+    }
+
+    let crawlCount = 0
+    for (const resultToCrawl of topResultsToCrawl) {
       try {
-        const spreadsheetQuery = `${query} filetype:${ext.replace('.', '')} site:${source.domain}`
-        
-        const response = await fetch('https://api.firecrawl.dev/v1/search', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${firecrawlApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: spreadsheetQuery,
-            limit: 2,
-            scrapeOptions: {
-              formats: ['markdown'],
-              onlyMainContent: true,
-              maxAge: 6048000
-            },
-            filters: {
-              includeDomains: [source.domain]
-            }
-          }),
-        })
+        const domain = new URL(resultToCrawl.url).hostname
+        const crawlResults = await intelligentCrawler.crawl(
+          resultToCrawl.url,
+          query,
+          domain,
+          crawlOptions
+        )
 
-        if (response.ok) {
-          const searchData = await response.json()
-          
-          const spreadsheetResults = searchData.data?.map((item: any) => ({
-            url: item.url,
-            title: item.title || item.url,
-            content: item.markdown || item.content || '',
-            contentType: 'spreadsheet' as const,
-            fileType: ext,
-            relevanceScore: calculateRelevanceScore(query, item.markdown || item.content || ''),
-            dataPoints: extractDataPoints(query, item.markdown || item.content || ''),
-            source
-          })) || []
-          
-          results.push(...spreadsheetResults)
-        }
+        // Convert crawl results to StrategySearchResult format and add to results
+        const newCrawlResults = crawlResults.map(cr => ({
+          url: cr.url,
+          title: cr.title,
+          content: cr.content,
+          summary: cr.content.substring(0, 300),
+          confidence: cr.relevanceScore,
+          dataPoints: cr.dataPoints,
+          strategy: `Deep-Dive (${cr.metadata.contentType || 'webpage'})`,
+          metadata: cr.metadata
+        }))
+
+        allResults.push(...newCrawlResults)
+
       } catch (error) {
-        console.error(`Error searching spreadsheets for ${source.domain}:`, error)
+        console.error(`Crawling failed for ${resultToCrawl.url}:`, error)
+      } finally {
+        crawlCount++
+        if (progressCallback) {
+          progressCallback({
+            completed: crawlCount,
+            total: topResultsToCrawl.length,
+            stage: `Deep dive complete for ${crawlCount}/${topResultsToCrawl.length} sources.`
+          })
+        }
       }
     }
+
+    // Re-score all results including the new ones from the crawl
+    if (progressCallback) {
+      progressCallback({ completed: 0, total: 1, stage: 'Re-scoring all results...' })
+    }
+    scoredResults = await qualityScorer.scoreResults(
+      allResults,
+      query,
+      options.sector
+    )
   }
   
-  return results
+  // Convert to DeepSearchResult format
+  const finalResults: DeepSearchResult[] = scoredResults.map(result => {
+    // Create a mock source for display, since we don't have pre-approved sources anymore
+    const source: ApprovedSource = {
+      domain: new URL(result.url).hostname.replace('www.', ''),
+      name: new URL(result.url).hostname,
+      description: 'Discovered Web Source',
+      contentTypes: ['articles'],
+      searchCapabilities: ['web'],
+      priority: 5,
+      categories: options.sector ? [options.sector] : []
+    }
+
+    return {
+      url: result.url,
+      title: result.title,
+      content: result.content,
+      contentType: inferContentType(result),
+      fileType: result.metadata?.fileType,
+      relevanceScore: result.qualityMetrics?.overallScore || result.confidence,
+      dataPoints: extractDataPointsAsStrings(result.dataPoints),
+      source,
+      qualityMetrics: result.qualityMetrics,
+      verificationStatus: result.verificationStatus,
+      crossReferences: result.crossReferences
+    }
+  })
+
+  // Sort by quality score and return the top results
+  return finalResults
+    .sort((a, b) => 
+      (b.qualityMetrics?.overallScore || b.relevanceScore) - 
+      (a.qualityMetrics?.overallScore || a.relevanceScore)
+    )
+    .slice(0, 10) // Return top 10 results
 }
 
-async function searchDatabases(
-  query: string,
-  source: ApprovedSource,
-  options: DeepSearchOptions,
-  firecrawlApiKey: string
-): Promise<DeepSearchResult[]> {
-  // For databases, we might need to use specific APIs
-  // For now, we'll search for database-related content
-  try {
-    const databaseQuery = `${query} database data API site:${source.domain}`
-    
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: databaseQuery,
-        limit: 2,
-        scrapeOptions: {
-          formats: ['markdown'],
-          onlyMainContent: true,
-          maxAge: 6048000
-        },
-        filters: {
-          includeDomains: [source.domain]
-        }
-      }),
-    })
-
-    if (response.ok) {
-      const searchData = await response.json()
-      
-      return searchData.data?.map((item: any) => ({
-        url: item.url,
-        title: item.title || item.url,
-        content: item.markdown || item.content || '',
-        contentType: 'database' as const,
-        relevanceScore: calculateRelevanceScore(query, item.markdown || item.content || ''),
-        dataPoints: extractDataPoints(query, item.markdown || item.content || ''),
-        source
-      })) || []
-    }
-  } catch (error) {
-    console.error(`Error searching databases for ${source.domain}:`, error)
+// Helper function to infer content type from result
+function inferContentType(result: ScoredResult): DeepSearchResult['contentType'] {
+  if (result.metadata?.contentType) {
+    return result.metadata.contentType as DeepSearchResult['contentType']
   }
   
-  return []
+  if (result.url.includes('.pdf')) return 'file'
+  if (result.url.includes('.xls') || result.url.includes('.csv')) return 'spreadsheet'
+  if (result.metadata?.sourceType === 'database') return 'database'
+  
+  return 'webpage'
 }
 
-function calculateRelevanceScore(query: string, content: string): number {
-  const lowerQuery = query.toLowerCase()
-  const lowerContent = content.toLowerCase()
-  
-  let score = 0
-  
-  // Exact phrase matches
-  const queryWords = lowerQuery.split(/\s+/)
-  const exactMatches = queryWords.filter(word => 
-    word.length > 3 && lowerContent.includes(word)
-  ).length
-  score += exactMatches * 10
-  
-  // Proximity scoring
-  const words = lowerContent.split(/\s+/)
-  for (let i = 0; i < words.length - 1; i++) {
-    const wordPair = `${words[i]} ${words[i + 1]}`
-    if (lowerQuery.includes(wordPair)) {
-      score += 5
-    }
-  }
-  
-  // Data point relevance
-  const dataPoints = extractDataPoints(query, content)
-  score += dataPoints.length * 15
-  
-  return score
-}
-
-function extractDataPoints(query: string, content: string): string[] {
-  const dataPoints: string[] = []
-  const lowerContent = content.toLowerCase()
-  
-  // Look for numbers, percentages, dates, etc.
-  const numberPatterns = [
-    /\$[\d,]+\.?\d*/g, // Currency
-    /[\d,]+\.?\d*%/g, // Percentages
-    /\d{1,2}\/\d{1,2}\/\d{2,4}/g, // Dates
-    /\d{4}-\d{2}-\d{2}/g, // ISO dates
-    /[\d,]+\.?\d*\s*(million|billion|trillion)/gi, // Large numbers
-  ]
-  
-  for (const pattern of numberPatterns) {
-    const matches = content.match(pattern)
-    if (matches) {
-      dataPoints.push(...matches)
-    }
-  }
-  
-  // Look for specific data mentioned in query
-  const queryWords = query.toLowerCase().split(/\s+/)
-  for (const word of queryWords) {
-    if (word.length > 4 && lowerContent.includes(word)) {
-      // Find the context around this word
-      const index = lowerContent.indexOf(word)
-      const context = content.substring(Math.max(0, index - 50), index + 50)
-      dataPoints.push(context.trim())
-    }
-  }
-  
-  return [...new Set(dataPoints)] // Remove duplicates
+// Helper function to extract data points as strings
+function extractDataPointsAsStrings(dataPoints: DataPoint[]): string[] {
+  return dataPoints.map(dp => {
+    if (typeof dp.value === 'string') return dp.value
+    return `${dp.value} (${dp.type})`
+  })
 } 

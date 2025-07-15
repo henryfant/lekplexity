@@ -3,7 +3,6 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, createDataStreamResponse } from 'ai'
 import { detectCompanyTicker } from '@/lib/company-ticker-map'
 import { getDeepDataSystemPrompt } from '@/lib/ai-config'
-import { getApprovedSourcesForQuery, getNextBestSources, getApprovedSourcesForSector } from '@/lib/approved-sources'
 import { performDeepSearch, DeepSearchOptions } from '@/lib/deep-search'
 import { selectModel, logModelSelection } from '@/lib/model-router'
 import FirecrawlApp from '@mendable/firecrawl-js'
@@ -49,24 +48,12 @@ export async function POST(request: Request) {
     const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey })
 
     // Get approved sources for this query or sector
-    let approvedSources
-    if (body.sector) {
-      approvedSources = getApprovedSourcesForSector(body.sector)
-      console.log(`[${requestId}] Sector selected: ${body.sector}. Sources:`, approvedSources.map(s => s.name))
-    } else {
-      approvedSources = getApprovedSourcesForQuery(query)
-      console.log(`[${requestId}] Selected sources:`, approvedSources.map(s => s.name))
-    }
+    // This section is now handled by the AI source discovery within performDeepSearch
+    const sector = body.sector
 
-    // Check if this is a follow-up search request
+    // The concept of follow-up searches with pre-defined lists is replaced by
+    // the AI's ability to learn and discover new sources on each run.
     const isFollowUpSearch = body.isFollowUpSearch || false
-    const excludedDomains = body.excludedDomains || []
-    
-    let sourcesToSearch = approvedSources
-    if (isFollowUpSearch && excludedDomains.length > 0) {
-      sourcesToSearch = getNextBestSources(excludedDomains)
-      console.log(`[${requestId}] Follow-up search with sources:`, sourcesToSearch.map(s => s.name))
-    }
 
     // Use createDataStreamResponse with a custom data stream
     return createDataStreamResponse({
@@ -75,7 +62,7 @@ export async function POST(request: Request) {
           // Update status
           dataStream.writeData({ 
             type: 'status', 
-            message: `Searching ${sourcesToSearch.length} high-quality sources for specific data...` 
+            message: `Initiating AI-powered deep search...` 
           })
 
           // Configure deep search options
@@ -84,15 +71,25 @@ export async function POST(request: Request) {
             includeFiles: true,
             includeSpreadsheets: true,
             includeDatabases: true,
-            targetDataPoints: extractTargetDataPoints(query)
+            targetDataPoints: extractTargetDataPoints(query),
+            useMultiStrategy: true,
+            useAIDiscovery: true,
+            useIntelligentCrawling: true,
+            useQualityScoring: true,
+            sector // Pass sector to the deep search
           }
 
-          // Perform deep search on approved sources
+          // Perform deep search on approved sources with progress updates
           const deepSearchResults = await performDeepSearch(
             query,
-            sourcesToSearch,
             searchOptions,
-            firecrawlApiKey
+            firecrawlApiKey,
+            (progress) => {
+              dataStream.writeData({
+                type: 'status',
+                message: progress.stage || `Searching ${progress.completed}/${progress.total} sources (${progress.source.name})...`
+              })
+            }
           )
 
           // Transform results for the frontend
@@ -109,7 +106,10 @@ export async function POST(request: Request) {
             siteName: result.source.name,
             relevanceScore: result.relevanceScore,
             contentType: result.contentType,
-            dataPoints: result.dataPoints
+            dataPoints: result.dataPoints,
+            qualityMetrics: result.qualityMetrics || null,
+            verificationStatus: result.verificationStatus || null,
+            crossReferences: result.crossReferences || []
           }))
 
           // Send sources immediately
@@ -176,7 +176,8 @@ export async function POST(request: Request) {
           }
           
           // Generate follow-up suggestions for next sources to search
-          const remainingSources = getNextBestSources(sourcesToSearch.map(s => s.domain))
+          // This is now handled dynamically by the AI's ability to discover new sources
+          const remainingSources = [] // This is now handled dynamically
           
           // Select model for follow-up suggestions
           const followUpModel = selectModel('follow_up', query, modelPreferences)
@@ -187,11 +188,11 @@ export async function POST(request: Request) {
             messages: [
               {
                 role: 'system',
-                content: `Generate 3-5 specific suggestions for additional high-quality sources that might contain the requested data. Focus on sources that specialize in the type of data being requested.`
+                content: `You are a research assistant. Your task is to suggest 3-5 specific, actionable next steps or alternative search queries to help the user find their requested data. The user has already seen a set of search results.`
               },
               {
                 role: 'user',
-                content: `Query: ${query}\n\nSearched sources: ${sourcesToSearch.map(s => s.name).join(', ')}\n\nAvailable remaining sources: ${remainingSources.map(s => s.name).join(', ')}\n\nSuggest which additional sources would be most likely to contain the specific data requested.`
+                content: `Query: ${query}\n\nBased on the initial results, what are some smart follow-up questions or different angles to explore to find the specific data requested? Do not mention the sources already searched.`
               }
             ],
             temperature: 0.7,
@@ -233,7 +234,7 @@ export async function POST(request: Request) {
           dataStream.writeData({ 
             type: 'follow_up_suggestions', 
             suggestions: followUpSuggestions,
-            remainingSources: remainingSources.map(s => ({ name: s.name, domain: s.domain, description: s.description }))
+            remainingSources: [] // This is now handled dynamically
           })
           
           // Signal completion

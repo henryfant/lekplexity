@@ -85,6 +85,12 @@ export default function DeepSearchPage() {
           setSearchStatus(chunk.message)
         } else if (chunk.type === 'sources') {
           setSources(chunk.sources)
+
+          // Store these sources for the current assistant response so that citations continue to work
+          const newMap = new Map(messageData)
+          const existingData = newMap.get(currentMessageIndex.current) || { sources: [] }
+          newMap.set(currentMessageIndex.current, { ...existingData, sources: chunk.sources })
+          setMessageData(newMap)
         } else if (chunk.type === 'ticker') {
           setCurrentTicker(chunk.symbol)
         } else if (chunk.type === 'follow_up_suggestions') {
@@ -189,6 +195,13 @@ export default function DeepSearchPage() {
 
   const isChatActive = hasSearched || messages.length > 0
 
+  const SECTOR_EXAMPLE_SOURCES: Record<string, string> = {
+    Industrials: 'census.gov, fred.stlouisfed.org, bls.gov, americanchemistry.com',
+    TMT: 'fcc.gov, gartner.com, idc.com, sec.gov',
+    Healthcare: 'cms.gov, fda.gov, cdc.gov, iqvia.com',
+    Consumer: 'census.gov, bls.gov, nielsen.com, npd.com'
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
       {/* Header */}
@@ -214,7 +227,10 @@ export default function DeepSearchPage() {
               onSectorChange={handleSectorChange}
             />
             <div className="mt-8 text-sm text-gray-500 dark:text-gray-400">
-              <p>Powered by L.E.K. grade sources including SEC, Federal Reserve, Bloomberg, Reuters, and more.</p>
+              <p>
+                Powered by L.E.K. grade sources including {SECTOR_EXAMPLE_SOURCES[sector]}
+                {SECTOR_EXAMPLE_SOURCES[sector].split(',').length < 4 ? ', and more.' : ', and more.'}
+              </p>
             </div>
           </div>
         ) : (
