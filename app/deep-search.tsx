@@ -40,7 +40,7 @@ export default function DeepSearchPage() {
   const [, setIsCheckingEnv] = useState<boolean>(true)
   const [pendingQuery, setPendingQuery] = useState<string>('')
   const [excludedDomains, setExcludedDomains] = useState<string[]>([])
-  const [sector, setSector] = useState<string>('Industrials')
+  const [sector, setSector] = useState<string>('General')
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useChat({
     api: '/api/fireplexity/deep-search',
@@ -199,16 +199,17 @@ export default function DeepSearchPage() {
     Industrials: 'census.gov, fred.stlouisfed.org, bls.gov, americanchemistry.com',
     TMT: 'fcc.gov, gartner.com, idc.com, sec.gov',
     Healthcare: 'cms.gov, fda.gov, cdc.gov, iqvia.com',
-    Consumer: 'census.gov, bls.gov, nielsen.com, npd.com'
+    Consumer: 'census.gov, bls.gov, nielsen.com, npd.com',
+    General: 'government sources, research institutions, and industry reports'
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
       {/* Header */}
       <Header />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!isChatActive ? (
           <div className="text-center">
             <LekplexityHero />

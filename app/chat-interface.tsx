@@ -177,6 +177,18 @@ export function ChatInterface({
                 const messageFollowUpQuestions = storedData?.followUpQuestions || []
                 const messageTicker = storedData?.ticker || null
                 
+                let displayedMessageSources: SearchResult[]
+                let moreMessageSources: SearchResult[]
+
+                if (isDeepSearch) {
+                  const sortedSources = [...messageSources].sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+                  displayedMessageSources = sortedSources.slice(0, 5)
+                  moreMessageSources = sortedSources.slice(5)
+                } else {
+                  displayedMessageSources = messageSources.slice(0, 5)
+                  moreMessageSources = messageSources.slice(5)
+                }
+
                 return (
                   <div key={pairIndex} className="space-y-6">
                     {/* User message */}
@@ -207,37 +219,21 @@ export function ChatInterface({
                                   <FileText className="h-4 w-4 text-amber-500" />
                                   <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sources</h2>
                                 </div>
-                                {messageSources.length > 5 && (
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">+{messageSources.length - 5} more</span>
-                                    <div className="flex -space-x-2">
-                                      {messageSources.slice(5, 10).map((result, idx) => (
-                                        <div key={idx} className="w-5 h-5 bg-white dark:bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600">
-                                          {result.favicon ? (
-                                            <Image
-                                              src={result.favicon}
-                                              alt=""
-                                              width={16}
-                                              height={16}
-                                              className="w-4 h-4 object-contain"
-                                              onError={(e) => {
-                                                const target = e.target as HTMLImageElement
-                                                target.style.display = 'none'
-                                              }}
-                                            />
-                                          ) : (
-                                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                                            </svg>
-                                          )}
-                                        </div>
+                                {moreMessageSources.length > 0 && (
+                                  <div className="relative group">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-1 cursor-pointer">+{moreMessageSources.length} more</span>
+                                    <div className="absolute hidden group-hover:block bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-10 w-64 right-0">
+                                      {moreMessageSources.map((source, idx) => (
+                                        <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="block text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 p-2 rounded whitespace-normal break-words">
+                                          {source.title}
+                                        </a>
                                       ))}
                                     </div>
                                   </div>
                                 )}
                               </div>
                               <div className="grid grid-cols-5 gap-2">
-                                {messageSources.slice(0, 5).map((result, idx) => (
+                                {displayedMessageSources.map((result, idx) => (
                                   <a
                                     key={idx}
                                     href={result.url}
@@ -421,122 +417,120 @@ export function ChatInterface({
           )}
 
           {/* Sources - Animated in first */}
-          {sources.length > 0 && !isWaitingForResponse && (
-            <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-yellow-500" />
-                  <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sources</h2>
-                </div>
-                {sources.length > 5 && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">+{sources.length - 5} more</span>
-                    <div className="flex -space-x-2">
-                      {sources.slice(5, 10).map((result, index) => (
-                        <div key={index} className="w-5 h-5 bg-white dark:bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600">
-                          {result.favicon ? (
-                            <Image
-                              src={result.favicon}
-                              alt=""
-                              width={16}
-                              height={16}
-                              className="w-4 h-4 object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.style.display = 'none'
-                              }}
-                            />
-                          ) : (
-                            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                            </svg>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+          {sources.length > 0 && !isWaitingForResponse && (() => {
+            let displayedSources: SearchResult[]
+            let moreSources: SearchResult[]
+
+            if (isDeepSearch) {
+              const sortedSources = [...sources].sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+              displayedSources = sortedSources.slice(0, 5)
+              moreSources = sortedSources.slice(5)
+            } else {
+              displayedSources = sources.slice(0, 5)
+              moreSources = sources.slice(5)
+            }
+
+            return (
+              <div className="opacity-0 animate-fade-up [animation-duration:500ms] [animation-delay:200ms] [animation-fill-mode:forwards]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-yellow-500" />
+                    <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sources</h2>
                   </div>
-                )}
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                {sources.slice(0, 5).map((result, index) => (
-                  <a
-                    key={index}
-                    href={result.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 hover:shadow-md opacity-0 animate-fade-up h-28"
-                    style={{
-                      animationDelay: `${300 + index * 30}ms`,
-                      animationDuration: '400ms',
-                      animationFillMode: 'forwards'
-                    }}
-                  >
-                    {/* Background image */}
-                    {result.image && (
-                      <div className="absolute inset-0">
-                        <Image
-                          src={result.image}
-                          alt=""
-                          fill
-                          sizes="(max-width: 640px) 20vw, (max-width: 1024px) 16vw, 12vw"
-                          className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.style.display = 'none'
-                          }}
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Gradient overlay - lighter for visibility */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-white/50 dark:from-zinc-800/90 dark:via-zinc-800/70 dark:to-zinc-800/50" />
-                    
-                    {/* Content */}
-                    <div className="relative p-3 flex flex-col justify-between h-full">
-                      {/* Favicon and domain */}
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex-shrink-0 w-4 h-4 bg-white/80 dark:bg-zinc-700/80 rounded flex items-center justify-center overflow-hidden">
-                          {result.favicon ? (
-                            <Image
-                              src={result.favicon}
-                              alt=""
-                              width={12}
-                              height={12}
-                              className="w-3 h-3 object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.style.display = 'none'
-                              }}
-                            />
-                          ) : (
-                            <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                            </svg>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate flex-1 font-medium">
-                          {result.siteName || new URL(result.url).hostname.replace('www.', '')}
-                        </p>
-                      </div>
-                      
-                      {/* Title */}
-                      <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
-                        {result.title}
-                      </h3>
-                      
-                      {/* Character count */}
-                      <div className="mt-1">
-                        <CharacterCounter 
-                          targetCount={result.markdown?.length || result.content?.length || 0} 
-                          duration={2000}
-                        />
+                  {moreSources.length > 0 && (
+                    <div className="relative group">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mr-1 cursor-pointer">+{moreSources.length} more</span>
+                      <div className="absolute hidden group-hover:block bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-10 w-64 right-0">
+                        {moreSources.map((source, idx) => (
+                          <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="block text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 p-2 rounded whitespace-normal break-words">
+                            {source.title}
+                          </a>
+                        ))}
                       </div>
                     </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {displayedSources.map((result, index) => (
+                    <a
+                      key={index}
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 hover:shadow-md opacity-0 animate-fade-up h-28"
+                      style={{
+                        animationDelay: `${300 + index * 30}ms`,
+                        animationDuration: '400ms',
+                        animationFillMode: 'forwards'
+                      }}
+                    >
+                      {/* Background image */}
+                      {result.image && (
+                        <div className="absolute inset-0">
+                          <Image
+                            src={result.image}
+                            alt=""
+                            fill
+                            sizes="(max-width: 640px) 20vw, (max-width: 1024px) 16vw, 12vw"
+                            className="object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Gradient overlay - lighter for visibility */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/70 to-white/50 dark:from-zinc-800/90 dark:via-zinc-800/70 dark:to-zinc-800/50" />
+                      
+                      {/* Content */}
+                      <div className="relative p-3 flex flex-col justify-between h-full">
+                        {/* Favicon and domain */}
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex-shrink-0 w-4 h-4 bg-white/80 dark:bg-zinc-700/80 rounded flex items-center justify-center overflow-hidden">
+                            {result.favicon ? (
+                              <Image
+                                src={result.favicon}
+                                alt=""
+                                width={12}
+                                height={12}
+                                className="w-3 h-3 object-contain"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
+                            ) : (
+                              <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                              </svg>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate flex-1 font-medium">
+                            {result.siteName || new URL(result.url).hostname.replace('www.', '')}
+                          </p>
+                        </div>
+                        
+                        {/* Title */}
+                        <h3 className="font-medium text-xs text-gray-900 dark:text-white line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors leading-tight">
+                          {result.title}
+                        </h3>
+                        
+                        {/* Character count */}
+                        <div className="mt-1">
+                          <CharacterCounter 
+                            targetCount={result.markdown?.length || result.content?.length || 0} 
+                            duration={2000}
+                          />
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                  </div>
+                </div>
+              )
+            })()}
 
 
           {/* Stock Chart - Show if ticker is available */}

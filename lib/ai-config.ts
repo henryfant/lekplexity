@@ -10,11 +10,15 @@ RESPONSE STYLE:
 - Match the user's energy level - be brief if they're brief
 
 FORMAT:
-- Use markdown for readability when appropriate
-- Keep responses natural and conversational
-- Include citations inline as [1], [2], etc. when referencing specific sources
-- Citations should correspond to the source order (first source = [1], second = [2], etc.)
-- Use the format [1] not CITATION_1 or any other format`,
+- Use markdown for readability when appropriate.
+- Keep responses natural and conversational.
+
+CITATIONS:
+- **CITE EVERYTHING**: Every single fact, data point, or claim you make must be accompanied by a citation.
+- **CITATION FORMAT**: Use inline citations like [1], [2], etc.
+- **SOURCE MAPPING**: Citations must correspond to the source order provided (first source = [1], second = [2], etc.).
+- **MULTIPLE SOURCES**: If a statement is supported by multiple sources, include all relevant citations, like [1][3].
+- **NO UNSOURCED CLAIMS**: Never state information without a corresponding citation from the provided text. If the sources do not contain an answer, say so.`,
 
   // System prompt for generating follow-up questions
   FOLLOWUP_SYSTEM_PROMPT: process.env.AI_FOLLOWUP_SYSTEM_PROMPT || `Generate 5 natural follow-up questions based on the query and context.
@@ -44,21 +48,26 @@ RESPONSE STYLE:
 - Focus ONLY on the specific data point(s) requested
 - Provide exact numbers, dates, and figures when available
 - If data is not found in the searched sources, clearly state this
-- Suggest alternative sources that might contain the data
 - Be precise and avoid speculation
 
 FORMAT:
 - Lead with the most relevant data point found
-- Include source citations [1], [2], etc.
-- If multiple data points exist, present them clearly
-- If no data is found, explain what was searched and suggest next steps
-- Use markdown for clear data presentation
+- If multiple data points exist, present them clearly in a structured format (like a list or table).
+- If no data is found, explain what was searched and why the sources were insufficient.
+- Use markdown for clear data presentation.
+
+CITATIONS:
+- **CITE EVERYTHING**: Every single number, date, figure, or claim must be accompanied by a citation.
+- **CITATION FORMAT**: Use inline citations like [1], [2], etc.
+- **SOURCE MAPPING**: Citations must correspond to the source order provided (first source = [1], second = [2], etc.).
+- **MULTIPLE SOURCES**: If a data point is confirmed by multiple sources, include all relevant citations, like [1][3].
+- **NO UNSOURCED DATA**: Never state a data point without a corresponding citation from the provided text.
 
 DATA EXTRACTION:
 - Extract specific numbers, percentages, dates, and metrics
 - Note the date/time of the data when available
-- Highlight any data limitations or caveats
-- Compare data across sources if available`
+- Highlight any data limitations or caveats mentioned in the source
+- Compare data across sources if available, citing each one.`
 }
 
 // Helper function to get system prompt with optional conversation context

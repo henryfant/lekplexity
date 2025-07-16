@@ -27,6 +27,7 @@ export interface DeepSearchResult {
   }
   verificationStatus?: 'verified' | 'partial' | 'unverified'
   crossReferences?: string[]
+  strategy?: string
 }
 
 export interface DeepSearchOptions {
@@ -58,7 +59,7 @@ export async function performDeepSearch(
   }
 
   const searchResults = await firecrawl.search(query, {
-    limit: 20, // Get more initial results to filter
+    limit: 40, // Increased to get more initial results to filter
     scrapeOptions: {
       formats: ['markdown'],
       onlyMainContent: true
@@ -121,7 +122,7 @@ export async function performDeepSearch(
 
   // Stage 3: Intelligent Crawling on promising results
   if (options.useIntelligentCrawling !== false && scoredResults.length > 0) {
-    const topResultsToCrawl = scoredResults.slice(0, 3) // Crawl top 3 results
+    const topResultsToCrawl = scoredResults.slice(0, 5) // Crawl top 5 results
 
     if (progressCallback) {
       progressCallback({
@@ -136,7 +137,8 @@ export async function performDeepSearch(
       maxPages: 10,
       followLinks: true,
       adaptiveDepth: true,
-      firecrawlApiKey: firecrawlApiKey
+      firecrawlApiKey: firecrawlApiKey,
+      openaiApiKey: process.env.OPENAI_API_KEY // Pass OpenAI key for report discovery
     }
 
     let crawlCount = 0
@@ -213,7 +215,8 @@ export async function performDeepSearch(
       source,
       qualityMetrics: result.qualityMetrics,
       verificationStatus: result.verificationStatus,
-      crossReferences: result.crossReferences
+      crossReferences: result.crossReferences,
+      strategy: result.strategy,
     }
   })
 

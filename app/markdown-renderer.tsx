@@ -21,35 +21,42 @@ export function MarkdownRenderer({ content, sources }: MarkdownRendererProps) {
 
   // Process content to replace [1] with React elements
   const processText = (text: string): React.ReactNode[] => {
-    const parts = text.split(/(\[\d+\])/g)
+    const parts = text.split(/((?:\[\d+\])+)/g)
     return parts.map((part, index) => {
-      const match = part.match(/\[(\d+)\]/)
-      if (match) {
-        const citationIndex = parseInt(match[1], 10) - 1
-        const sourceUrl = sources && sources[citationIndex] ? sources[citationIndex].url : undefined
-
-        const supElement = (
-          <sup
-            key={index}
-            className="citation text-green-600 cursor-pointer hover:text-green-700 text-[0.65rem] ml-0.5"
-            data-citation={match[1]}
-          >
-            [{match[1]}]
-          </sup>
-        )
-
-        // If we have a valid source URL, wrap the <sup> in an anchor tag so the browser handles the link natively
-        return sourceUrl ? (
-          <a
-            key={index}
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {supElement}
-          </a>
-        ) : (
-          supElement
+      const isCitationGroup = /((?:\[\d+\])+)/.test(part)
+      if (isCitationGroup) {
+        const citationMatches = part.match(/\[(\d+)\]/g) || []
+        
+        return (
+          <span key={index} className="citation-group">
+            {citationMatches.map((match, i) => {
+              const citationIndex = parseInt(match.replace(/[\[\]]/g, ''), 10) - 1
+              const sourceUrl = sources && sources[citationIndex] ? sources[citationIndex].url : undefined
+              
+              const supElement = (
+                <sup
+                  key={i}
+                  className="citation text-green-600 cursor-pointer hover:text-green-700 text-[0.65rem] ml-0.5"
+                  data-citation={match}
+                >
+                  {match}
+                </sup>
+              )
+              
+              return sourceUrl ? (
+                <a
+                  key={i}
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {supElement}
+                </a>
+              ) : (
+                supElement
+              )
+            })}
+          </span>
         )
       }
       return part

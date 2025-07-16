@@ -12,18 +12,10 @@ export interface SearchResult {
   relevanceScore?: number
   contentType?: 'webpage' | 'file' | 'spreadsheet' | 'database'
   dataPoints?: string[]
-  qualityMetrics?: {
-    authorityScore: number
-    freshnessScore: number
-    completenessScore: number
-    accuracyScore: number
-    relevanceScore: number
-    overallScore: number
-    confidence: number
-    explanation: string
-  } | null
-  verificationStatus?: 'verified' | 'partial' | 'unverified' | null
+  qualityMetrics?: any
+  verificationStatus?: string
   crossReferences?: string[]
+  strategy?: string
 }
 
 export interface FollowUpSuggestion {

@@ -277,7 +277,7 @@ export class QualityScorer {
     }
 
     // Boost if sector is relevant
-    if (sector) {
+    if (sector && sector !== 'General') {
       const contentLower = result.content.toLowerCase()
       const titleLower = result.title?.toLowerCase() || ''
       const urlLower = result.url.toLowerCase()

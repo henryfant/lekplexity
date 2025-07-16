@@ -1,6 +1,9 @@
 import { DataPoint } from './search-strategies'
 import FirecrawlApp from '@mendable/firecrawl-js'
 import axios from 'axios'
+import { createOpenAI } from '@ai-sdk/openai'
+import { generateObject } from 'ai'
+import { z } from 'zod'
 // import pdf from 'pdf-parse' // Removed static import
 
 export interface CrawlNode {
@@ -20,6 +23,7 @@ export interface CrawlOptions {
   dataPatterns?: RegExp[]
   relevanceThreshold?: number
   firecrawlApiKey?: string
+  openaiApiKey?: string
 }
 
 export interface CrawlResult {
@@ -34,8 +38,20 @@ export interface CrawlResult {
   metadata: Record<string, any>
 }
 
+const ReportSchema = z.object({
+  name: z.string().describe("The full name of the report or study."),
+  publisher: z.string().optional().describe("The publishing organization or author."),
+  year: z.string().optional().describe("The year of publication.")
+});
+
+const MentionedReportsSchema = z.object({
+  reports: z.array(ReportSchema).describe("An array of mentioned reports.")
+});
+
+
 export class IntelligentCrawler {
   private firecrawl: FirecrawlApp | null = null
+  private openai: any | null = null
   private visitedUrls: Set<string> = new Set()
   private crawlQueue: CrawlNode[] = []
   private results: CrawlResult[] = []
@@ -55,6 +71,9 @@ export class IntelligentCrawler {
   ): Promise<CrawlResult[]> {
     if (!this.firecrawl && options.firecrawlApiKey) {
       this.firecrawl = new FirecrawlApp({ apiKey: options.firecrawlApiKey })
+    }
+    if (!this.openai && options.openaiApiKey) {
+      this.openai = createOpenAI({ apiKey: options.openaiApiKey })
     }
 
     if (!this.firecrawl) {
@@ -93,7 +112,7 @@ export class IntelligentCrawler {
           this.results.push(result)
           pagesProcessed++
 
-          // Handle discovered files
+          // Handle discovered files (directly linked and externally mentioned)
           for (const fileUrl of result.fileLinks) {
             if (!this.visitedUrls.has(fileUrl)) {
               this.visitedUrls.add(fileUrl)
@@ -158,7 +177,14 @@ export class IntelligentCrawler {
       const relevanceScore = this.calculateRelevance(content, query, dataPoints)
 
       // Extract links for potential crawling
-      const { webLinks, fileLinks } = this.extractLinks(html, node.url, domain)
+      let { webLinks, fileLinks } = this.extractLinks(html, node.url, domain)
+
+      // Discover unlinked, mentioned reports and add them to fileLinks
+      if (this.openai) {
+        const externalReportUrls = await this.extractAndSearchForMentionedReports(content, query)
+        fileLinks.push(...externalReportUrls)
+        fileLinks = [...new Set(fileLinks)] // Deduplicate
+      }
 
       return {
         url: node.url,
@@ -213,6 +239,64 @@ export class IntelligentCrawler {
     } catch (error) {
       console.error(`Failed to crawl file ${url}:`, error)
       return null
+    }
+  }
+
+  private async extractAndSearchForMentionedReports(
+    content: string,
+    query: string
+  ): Promise<string[]> {
+    if (!this.openai || !this.firecrawl) return []
+
+    const prompt = `
+        Based on the following text content from a webpage related to the query "${query}", please identify any specific research reports, studies, or datasets that are mentioned by name but are not directly linked.
+
+        For each mentioned report, extract the following if available:
+        - Full name of the report
+        - Publishing organization or author
+        - Year of publication
+
+        Format your response as a JSON object with a key "reports", which is an array of objects, each with keys "name", "publisher", and "year".
+        If no reports are mentioned, return an empty array.
+
+        Content to analyze (first 8000 characters):
+        ---
+        ${content.substring(0, 8000)}
+    `
+
+    try {
+      const response = await generateObject({
+        model: this.openai('gpt-4o-mini'),
+        schema: MentionedReportsSchema,
+        prompt: prompt,
+      })
+  
+      const mentionedReports = response.object.reports
+      if (mentionedReports.length === 0) return []
+      
+      const foundUrls: string[] = []
+  
+      for (const report of mentionedReports) {
+        const searchQuery = `"${report.name}" ${report.publisher || ''} ${report.year || ''} filetype:pdf`
+        console.log(`[External Report Discovery] Searching for: ${searchQuery}`)
+        
+        const searchResults = await this.firecrawl.search(searchQuery, {
+          limit: 1,
+          pageOptions: { fetchPageContent: false }
+        })
+  
+        if (searchResults.data && searchResults.data.length > 0) {
+          const url = searchResults.data[0].url
+          if (url && typeof url === 'string' && url.endsWith('.pdf')) {
+               console.log(`[External Report Discovery] Found PDF: ${url}`)
+               foundUrls.push(url)
+          }
+        }
+      }
+      return foundUrls
+    } catch (error) {
+      console.error('[External Report Discovery] Failed to process AI response:', error)
+      return []
     }
   }
 

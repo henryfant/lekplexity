@@ -79,6 +79,7 @@ export function SearchComponent({ handleSubmit, input, handleInputChange, isLoad
                   <option value="Healthcare">Healthcare</option>
                   <option value="Industrials">Industrials</option>
                   <option value="TMT">TMT</option>
+                  <option value="General">General (All Sectors)</option>
                 </select>
               </div>
             </div>
@@ -130,7 +131,8 @@ function getSectorSuggestions(sector: string): string[] {
     Consumer: ['Market share trends', 'Consumer spending patterns', 'E-commerce growth'],
     Healthcare: ['FDA approvals', 'Clinical trial results', 'Healthcare spending'],
     Industrials: ['Supply chain analysis', 'Manufacturing trends', 'Infrastructure investments'],
-    TMT: ['Tech earnings', 'AI market size', 'Telecom growth']
+    TMT: ['Tech earnings', 'AI market size', 'Telecom growth'],
+    General: ['Economic indicators', 'Market research', 'Industry analysis']
   }
   return suggestions[sector] || []
 }

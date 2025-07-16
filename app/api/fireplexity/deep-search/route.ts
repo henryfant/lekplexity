@@ -87,7 +87,7 @@ export async function POST(request: Request) {
             (progress) => {
               dataStream.writeData({
                 type: 'status',
-                message: progress.stage || `Searching ${progress.completed}/${progress.total} sources (${progress.source.name})...`
+                message: progress.stage || `Searching ${progress.completed}/${progress.total} sources (${progress.source?.name})...`
               })
             }
           )
@@ -109,7 +109,8 @@ export async function POST(request: Request) {
             dataPoints: result.dataPoints,
             qualityMetrics: result.qualityMetrics || null,
             verificationStatus: result.verificationStatus || null,
-            crossReferences: result.crossReferences || []
+            crossReferences: result.crossReferences || [],
+            strategy: result.strategy || 'unknown',
           }))
 
           // Send sources immediately
