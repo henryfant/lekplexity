@@ -1,8 +1,6 @@
-import { ApprovedSource } from './approved-sources'
-
 export interface SearchStrategy {
   name: string
-  execute: (query: string, sources: ApprovedSource[], options: SearchOptions) => Promise<SearchResult[]>
+  execute: (query: string, options: SearchOptions) => Promise<SearchResult[]>
   priority: number
   applicable: (query: string) => boolean
 }
@@ -47,35 +45,18 @@ export class DirectAPIStrategy implements SearchStrategy {
     return apiKeywords.some(keyword => query.toLowerCase().includes(keyword))
   }
 
-  async execute(query: string, sources: ApprovedSource[], options: SearchOptions): Promise<SearchResult[]> {
+  async execute(query: string, options: SearchOptions): Promise<SearchResult[]> {
     const results: SearchResult[] = []
     
-    for (const source of sources) {
-      if (source.apiEndpoint) {
-        try {
-          const apiResults = await this.queryAPI(source, query, options)
-          results.push(...apiResults)
-        } catch (error) {
-          console.error(`API search failed for ${source.name}:`, error)
-        }
-      }
-    }
     
     return results
   }
 
-  private async queryAPI(source: ApprovedSource, query: string, options: SearchOptions): Promise<SearchResult[]> {
+  private async queryAPI(query: string, options: SearchOptions): Promise<SearchResult[]> {
     // Implementation varies by API
     // This is a template that would be customized per source
     const results: SearchResult[] = []
     
-    if (source.domain === 'fred.stlouisfed.org') {
-      // FRED API implementation
-      results.push(...await this.queryFREDAPI(query, options))
-    } else if (source.domain === 'census.gov') {
-      // Census API implementation
-      results.push(...await this.queryCensusAPI(query, options))
-    }
     
     return results
   }
@@ -116,21 +97,12 @@ export class SemanticSearchStrategy implements SearchStrategy {
     return query.split(' ').length > 5 || query.includes('how') || query.includes('why')
   }
 
-  async execute(query: string, sources: ApprovedSource[], options: SearchOptions): Promise<SearchResult[]> {
+  async execute(query: string, options: SearchOptions): Promise<SearchResult[]> {
     const results: SearchResult[] = []
     
     // Use vector embeddings to find semantically similar content
     const queryEmbedding = await this.getEmbedding(query, options.openaiApiKey)
     
-    for (const source of sources) {
-      const sourceResults = await this.searchSourceSemantically(
-        source, 
-        query, 
-        queryEmbedding, 
-        options
-      )
-      results.push(...sourceResults)
-    }
     
     return results
   }
@@ -141,7 +113,6 @@ export class SemanticSearchStrategy implements SearchStrategy {
   }
 
   private async searchSourceSemantically(
-    source: ApprovedSource, 
     query: string, 
     queryEmbedding: number[],
     options: SearchOptions
@@ -162,14 +133,10 @@ export class PatternExtractionStrategy implements SearchStrategy {
     return patterns.some(pattern => query.toLowerCase().includes(pattern))
   }
 
-  async execute(query: string, sources: ApprovedSource[], options: SearchOptions): Promise<SearchResult[]> {
+  async execute(query: string, options: SearchOptions): Promise<SearchResult[]> {
     const results: SearchResult[] = []
     const patterns = this.buildDataPatterns(query)
     
-    for (const source of sources) {
-      const extractedData = await this.extractDataWithPatterns(source, patterns, options)
-      results.push(...extractedData)
-    }
     
     return results
   }
@@ -199,7 +166,6 @@ export class PatternExtractionStrategy implements SearchStrategy {
   }
 
   private async extractDataWithPatterns(
-    source: ApprovedSource, 
     patterns: RegExp[], 
     options: SearchOptions
   ): Promise<SearchResult[]> {
@@ -218,11 +184,11 @@ export class CrossReferenceStrategy implements SearchStrategy {
     return query.includes('verify') || query.includes('accurate') || query.includes('latest')
   }
 
-  async execute(query: string, sources: ApprovedSource[], options: SearchOptions): Promise<SearchResult[]> {
+  async execute(query: string, options: SearchOptions): Promise<SearchResult[]> {
     const results: SearchResult[] = []
     
     // Get initial results from multiple sources
-    const initialResults = await this.gatherInitialResults(query, sources, options)
+    const initialResults = await this.gatherInitialResults(query, options)
     
     // Cross-validate data points
     const validatedResults = await this.crossValidate(initialResults)
@@ -233,7 +199,6 @@ export class CrossReferenceStrategy implements SearchStrategy {
 
   private async gatherInitialResults(
     query: string, 
-    sources: ApprovedSource[], 
     options: SearchOptions
   ): Promise<SearchResult[]> {
     // Gather results from multiple sources for validation
@@ -280,7 +245,6 @@ export class SearchStrategyManager {
 
   async executeMultiStrategy(
     query: string, 
-    sources: ApprovedSource[], 
     options: SearchOptions
   ): Promise<SearchResult[]> {
     const applicableStrategies = this.strategies
@@ -291,7 +255,7 @@ export class SearchStrategyManager {
     
     // Execute strategies in parallel for better performance
     const strategyPromises = applicableStrategies.map(strategy => 
-      strategy.execute(query, sources, options)
+      strategy.execute(query, options)
         .catch(error => {
           console.error(`Strategy ${strategy.name} failed:`, error)
           return []
@@ -329,9 +293,8 @@ export class SearchStrategyManager {
 // Export main function
 export async function performMultiStrategySearch(
   query: string,
-  sources: ApprovedSource[],
   options: SearchOptions
 ): Promise<SearchResult[]> {
   const manager = new SearchStrategyManager()
-  return manager.executeMultiStrategy(query, sources, options)
+  return manager.executeMultiStrategy(query, options)
 } 

@@ -164,8 +164,19 @@ You can customize the deep search behavior by setting environment variables:
 # Customize the AI's data extraction behavior
 AI_DEEP_DATA_SYSTEM_PROMPT="Your custom deep data prompt here"
 
-# Add or modify approved sources in lib/approved-sources.ts
+# Add or modify approved sources in lib/content-selection.ts
+# Customize scoring and ranking in lib/quality-scoring.ts
+# Modify data extraction in lib/intelligent-crawler.ts
 ```
+
+## Customization
+
+- **Search Strategies**: Modify existing or add new strategies in `lib/search-strategies.ts`
+- **API Keys**: Configure API keys in `.env.local`
+- **UI Components**: Customize React components in `app/` and `components/`
+
+## Roadmap
+// ... existing code ...
 
 ## Support
 
