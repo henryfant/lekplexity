@@ -311,21 +311,38 @@ export async function POST(request: Request) {
 
 // Helper function to extract target data points from query
 function extractTargetDataPoints(query: string): string[] {
-  const dataPoints: string[] = []
-  const lowerQuery = query.toLowerCase()
-  
-  // Look for specific data types mentioned
-  const dataTypes = [
-    'revenue', 'profit', 'earnings', 'sales', 'growth', 'market cap',
-    'price', 'value', 'percentage', 'rate', 'ratio', 'index',
-    'gdp', 'inflation', 'unemployment', 'interest rate'
-  ]
-  
-  for (const dataType of dataTypes) {
-    if (lowerQuery.includes(dataType)) {
-      dataPoints.push(dataType)
+  const lowerQuery = query.toLowerCase();
+  const foundDataPoints = new Set<string>();
+
+  const dataPointMap: Record<string, string[]> = {
+    'revenue': ['revenue', 'sales', 'top line', 'turnover', 'how much money did they make'],
+    'profit': ['profit', 'earnings', 'net income', 'bottom line'],
+    'market cap': ['market cap', 'market capitalization', 'valuation', 'value'],
+    'growth': ['growth', 'growth rate', 'yoy', 'year-over-year', 'qoq', 'quarter-over-quarter'],
+    'gdp': ['gdp', 'gross domestic product'],
+    'inflation': ['inflation', 'cpi', 'consumer price index'],
+    'unemployment': ['unemployment', 'jobless rate'],
+    'interest rate': ['interest rate', 'fed funds rate', 'policy rate'],
+  };
+
+  for (const canonical of Object.keys(dataPointMap)) {
+    for (const variation of dataPointMap[canonical]) {
+      if (lowerQuery.includes(variation)) {
+        foundDataPoints.add(canonical);
+      }
     }
   }
-  
-  return dataPoints
+
+  // Generic terms - less specific, but still useful
+  const genericTerms = [
+    'price', 'value', 'percentage', 'rate', 'ratio', 'index', 'figure', 'number', 'statistic'
+  ];
+
+  for (const term of genericTerms) {
+    if (lowerQuery.includes(term)) {
+      foundDataPoints.add(term);
+    }
+  }
+
+  return Array.from(foundDataPoints);
 } 
