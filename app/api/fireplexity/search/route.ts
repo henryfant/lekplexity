@@ -75,8 +75,9 @@ export async function POST(request: Request) {
           dataStream.writeData({ type: 'status', message: 'Starting search...' })
           dataStream.writeData({ type: 'status', message: 'Searching for relevant sources...' })
             
+          // 1. FEWER SOURCES
           const searchData = await firecrawl.search(query, {
-            limit: 6,
+            limit: 3, // Reduced from 6
             scrapeOptions: {
               formats: ['markdown'],
               onlyMainContent: true
@@ -117,7 +118,8 @@ export async function POST(request: Request) {
           context = sources
             .map((source: { title: string; markdown?: string; content?: string; url: string }, index: number) => {
               const content = source.markdown || source.content || ''
-              const relevantContent = selectRelevantContent(content, query, 2000)
+              // 2. SMALLER CONTEXT SNIPPETS
+              const relevantContent = selectRelevantContent(content, query, 800) // Reduced from 2000
               return `[${index + 1}] ${source.title}\nURL: ${source.url}\n${relevantContent}`
             })
             .join('\n\n---\n\n')
@@ -160,6 +162,7 @@ export async function POST(request: Request) {
             ]
           }
           
+          /* 4. DISABLED FOLLOW-UPS
           // Start generating follow-up questions in parallel (before streaming answer)
           const conversationPreview = isFollowUp 
             ? messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n\n')
@@ -184,12 +187,10 @@ export async function POST(request: Request) {
             temperature: 0.7,
             maxTokens: 150,
           })
+          */
           
-          // Select model for main synthesis based on query complexity
-          const synthesisModel = selectModel('synthesis', query, {
-            ...modelPreferences,
-            contextLength: context.length
-          })
+          // 3. FORCE FAST MODEL + FEWER TOKENS
+          const synthesisModel = 'gpt-4o-mini' // Forcing the fastest model
           logModelSelection('synthesis', query, synthesisModel, `Context length: ${context.length}`)
           
           // Stream the text generation
@@ -197,13 +198,17 @@ export async function POST(request: Request) {
             model: openai(synthesisModel),
             messages: aiMessages,
             temperature: 0.7,
-            maxTokens: 2000
+            maxTokens: 700 // Reduced from 2000
           })
           
           // Merge the text stream into the data stream
           // This ensures proper ordering of text chunks
           result.mergeIntoDataStream(dataStream)
           
+          // Wait for the text generation to complete
+          await result.text
+          
+          /*
           // Wait for both the text generation and follow-up questions
           const [fullAnswer, followUpResponse] = await Promise.all([
             result.text,
@@ -219,6 +224,7 @@ export async function POST(request: Request) {
 
           // Send follow-up questions after the answer is complete
           dataStream.writeData({ type: 'follow_up_questions', questions: followUpQuestions })
+          */
           
           // Signal completion
           dataStream.writeData({ type: 'complete' })
